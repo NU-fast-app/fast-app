@@ -424,6 +424,8 @@ function CareApp({ user }) {
   } else if (screen.name === 'home') {
     content = (
       <Home
+        key={group.groupId}
+        groupId={group.groupId}
         groupName={currentGroup.name}
         canSwitch={groups.length > 1}
         onSwitch={() => goTo(TEAMS_SCREEN)}

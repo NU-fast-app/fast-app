@@ -37,11 +37,11 @@ Decide with the client whether approval can be undone.
 ## 4. Playing sessions
 
 Built: the pre-session checklist, the random set not yet played today with its stories shuffled, and a session record per play (`groups/{id}/sessions/{id}`, saved when the set starts, with `endedAt` once it plays to the end).
+Home shows progress from completed sessions across the care team.
 What's left:
 
 - The post-session checklist (slide 27).
 Add its answers to the session, the way `endedAt` is added (the rules allow its player one update for it).
-- Progress on Home (today's sessions, days completed, 168 in all), computed from the sessions.
 - Decide with the client which day a session around midnight counts toward (it uses the playing phone's calendar today), and whether a session stopped partway counts.
 - Gate playing on clinician approval once it exists (any set with stories can be played for now).
 - Warn when starting less than 2 hours after the last session, but allow it.

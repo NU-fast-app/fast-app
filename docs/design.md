@@ -43,6 +43,7 @@ Color is never the only signal; there is always text too ("Ready", "In range", "
 
 - **Phone** (the main target): a single column up to 28rem (448 px) wide, a top bar with text buttons (Back, Cancel, Menu), and a Menu that opens Home, Record a Story and Listen and Edit Stories.
 - Home shows a compact current-group card with a group name selector.
+Playback progress shows today's distinct sets in a ring, total completed sessions in a gauge, and completed days in a circular frame without a target.
 Choosing a group updates the `group` query parameter in the URL.
 If the URL points to a group that does not exist, show the selector and a clear recovery message without showing story progress.
 - **Computer** (960 px and wider): a 256 px sidebar replaces Menu and Back.

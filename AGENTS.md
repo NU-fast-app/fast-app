@@ -168,6 +168,7 @@ Only someone signed in with the invited email address, confirmed, can use it, an
 - **Your care teams**: switch between the care teams you're on, or start another.
 The current one is in the URL as `?group=<groupId>`; without it the app opens the one used last on that device.
 - **Home**: whose care team it is, how many of the 4 sets are ready, a bar per set in its color, and what to do next (e.g. "Happy set 2 needs about 3 more minutes").
+Playback progress shows today's distinct completed sets, total completed sessions toward 168, and days with all four sets completed, across the care team.
 Set totals and the Listen screen include only the current care team's stories.
 On a phone, **Menu** (top right) shows your account and opens Home, Record a Story, Listen and Edit Stories, Play Stories, Care team, Your care teams and Sign out.
 - **Record a story**: pick a set; each shows its stories, total and time left to go, with a bar from 0:00 to 11:00 and the 9:00 to 11:00 target shaded.
@@ -234,7 +235,7 @@ The design canvas linked above has every screen on phone and computer, the reaso
 - The eligibility survey.
 - Editing a story's title, storyteller or relationship after it's saved.
 - Clinician comments and approval, and automatically regrouping stories to fit the targets.
-- The rest of playing: the post-session checklist, the approval gate, play instructions, progress tracking (168 sessions), the 2-hour warning and reminders.
+- The rest of playing: the post-session checklist, the approval gate, play instructions, the 2-hour warning and reminders.
 
 ## Firebase
 
@@ -329,6 +330,7 @@ Everything else is denied.
 - `src/PlaySession.jsx`: playing a set to the patient: the checklists, then the set.
 - `src/playing.js`: the playing rules: the checklist items, the signs of being awake, and picking a random set and story order.
 - `src/sessions.js`: saves and lists the sessions played, in Firestore.
+- `src/playbackProgress.js`: calculates Home playback progress from completed sessions.
 - `src/chime.js`: makes the sound check's chime, as a WAV file.
 - `src/ClipPlayer.jsx`: plays several clips back to back as one, as a full player or a compact row.
 - `src/audioCache.js`: keeps loaded audio in memory so replays don't download again.
