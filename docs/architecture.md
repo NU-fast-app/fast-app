@@ -140,6 +140,10 @@ Shortening keeps half a second of each.
 `encodeMp3()` encodes with LAME (`wasm-media-encoders`) at 64 kbps.
 Both libraries load only when needed (dynamic `import()`).
 - Saving re-encodes **both** clips to MP3, so the name clip and the story stay in one format.
+- `App` starts loading the speech model in the background when the site opens.
+Opening the story editor creates an English transcript with `src/transcribe.js` and `src/transcribe.worker.js`, using Transformers.js and Whisper tiny English in a worker.
+The model is cached by the browser; the story audio is processed on the device and the transcript is not saved to Firestore.
+Word timestamps map through the current edit plan, so tapping a word seeks into the edited preview and the current word highlights during playback.
 - The editor is used in three places: during recording (`RecordStory`, step `edit`), and for saved stories (`EditStory`).
 It takes `maxLength` and `limitText` so the caller decides the limit: 5:00, or less if the set has less room.
 A 100 ms safety margin (`SAFETY`) covers rounding when saving.
