@@ -83,15 +83,10 @@ These come from the project doc ([docs/requirements.md](docs/requirements.md)) a
 - There are exactly **4 story sets**: Happy set 1, Happy set 2, Challenging set 1 and Challenging set 2 (doc slides 10, 11 and 21).
 - A story can be any length up to **5:00, counting the patient's name** said 3 times at its start.
 - A set holds any number of stories that add up to **9:00 to 11:00**.
-<<<<<<< HEAD
-- Stories move only between sets with the same affect (happy or challenging).
-- Randomness belongs to playback: each session plays a random set not yet played that day, with the stories in a set in random order (slides 22 and 23).
-The schedule around it (4 sessions a day, at least 2 hours apart, 168 in all) isn't enforced yet.
-=======
 - A saved story can move to any set, including one with the other affect (a happy story can become a challenging one, and the reverse), as long as both sets stay at or under 11:00.
 The client asked for this after testing (it was first built to keep the affect).
-- Randomness belongs to playback, which is not built yet: 4 sessions a day, at least 2 hours apart, each playing a random set not yet played that day, with the stories in a set in random order, for 168 sessions in all (slides 22 and 23).
->>>>>>> origin/main
+- Randomness belongs to playback: each session plays a random set not yet played that day, with the stories in a set in random order (slides 22 and 23).
+The schedule around it (4 sessions a day, at least 2 hours apart, 168 in all) isn't enforced yet.
 - Open question: the slide 10 scenario gives happy sets 9:45 to 10:15, while the user stories (slides 11 and 19) say 9:00 to 11:00.
 The app uses 9:00 to 11:00 for all 4 sets until the client says otherwise.
 
@@ -310,18 +305,9 @@ What else a member can do depends on their access level (`access` on their membe
 Only the owner and administrators create, list and cancel invites, change members' access and remove members; nobody changes their own access or the owner's, and the owner can't leave or be removed.
 Someone joins with exactly the access level of their invite.
 Nobody can add themselves to a group except by starting it or accepting an invite for their own confirmed email address.
-<<<<<<< HEAD
-Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`setNumber` between 1 and 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
-<<<<<<< HEAD
+Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`affect` and `setNumber`, to a valid affect and set 1 or 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
 Members who can play save a session for each set they play, once, and the player adds `endedAt` when it plays to the end; nothing else about a session changes, nobody can delete one, and its checklist answers must come from fixed lists.
 Any member who can play answers the hearing aid question once (`hearingAid` on the group); it can't change after that.
-=======
-Members save a session for each set they play, once, and the player adds `endedAt` when it plays to the end; nothing else about a session changes, nobody can delete one, and its checklist answers must come from fixed lists.
-Any member can answer the hearing aid question once (`hearingAid` on the group); it can't change after that.
-=======
-Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`affect` and `setNumber`, to a valid affect and set 1 or 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
->>>>>>> origin/main
->>>>>>> origin/main
 Deleting is a soft delete: a story and its audio can be removed for good only after it has been deleted for 30 days (`RECOVERY_DAYS` in `src/stories.js`, mirrored in the rules).
 The free plan can't run scheduled jobs, so the app removes expired stories whenever a member loads the stories (`removeExpiredStories()`).
 Everything else is denied.

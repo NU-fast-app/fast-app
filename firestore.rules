@@ -113,13 +113,9 @@ rules_version = '2';
 //
 // The app saves a story and all its chunks in one batch, and removes them for good in one batch.
 // It lists a group's stories with where('group', '==', groupId), reads chunks by ID, moves a
-<<<<<<< HEAD
-// story by updating only its setNumber, and deletes or restores one by updating it.
+// story by updating only its affect and setNumber, and deletes or restores one by updating it.
 // It lists a day's sessions with where('day', '==', day), saves one with a single add, and adds
 // endedAt with a single update.
-=======
-// story by updating only its affect and setNumber, and deletes or restores one by updating it.
->>>>>>> origin/main
 //
 // ===============================================================
 
