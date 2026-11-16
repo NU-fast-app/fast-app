@@ -83,9 +83,15 @@ These come from the project doc ([docs/requirements.md](docs/requirements.md)) a
 - There are exactly **4 story sets**: Happy set 1, Happy set 2, Challenging set 1 and Challenging set 2 (doc slides 10, 11 and 21).
 - A story can be any length up to **5:00, counting the patient's name** said 3 times at its start.
 - A set holds any number of stories that add up to **9:00 to 11:00**.
+<<<<<<< HEAD
 - Stories move only between sets with the same affect (happy or challenging).
 - Randomness belongs to playback: each session plays a random set not yet played that day, with the stories in a set in random order (slides 22 and 23).
 The schedule around it (4 sessions a day, at least 2 hours apart, 168 in all) isn't enforced yet.
+=======
+- A saved story can move to any set, including one with the other affect (a happy story can become a challenging one, and the reverse), as long as both sets stay at or under 11:00.
+The client asked for this after testing (it was first built to keep the affect).
+- Randomness belongs to playback, which is not built yet: 4 sessions a day, at least 2 hours apart, each playing a random set not yet played that day, with the stories in a set in random order, for 168 sessions in all (slides 22 and 23).
+>>>>>>> origin/main
 - Open question: the slide 10 scenario gives happy sets 9:45 to 10:15, while the user stories (slides 11 and 19) say 9:00 to 11:00.
 The app uses 9:00 to 11:00 for all 4 sets until the client says otherwise.
 
@@ -182,12 +188,15 @@ An **Edit** button opens the story editor.
   - **Speed up or cut a part**: drag across part of the waveform, then play it at 1.1× or 1.2× (the voice keeps its natural pitch) or cut it.
   - **Add or record over a part**: tap a spot on the waveform and record a new part there, or drag across a part and record something in its place. Added parts show as red marks and can be moved afterwards: drag a mark, or a part recorded over by its box (or its edges, to change what it replaces), with **Listen** playing a few seconds either side; each can be removed (a part recorded over comes back).
   - **Play** the edited story before saving; **Undo all changes** starts over.
+  - The English transcript is created automatically in the editor, highlights each word during playback, and lets you tap a word to seek there.
+The speech model downloads in the background when the app opens, and the transcript is not saved.
   - Saving processes the audio in the browser and stores the story as MP3.
 An edited saved story replaces the old one in one step, so it's never half saved, and the earlier version goes to Recently deleted.
 - **Listen**: every set under Happy events and Challenging events, each with a whole-set player, its target status, and its stories.
 Each story's **⋯** opens **Edit**, **Move** and **Delete** (asks first).
 **Recently deleted**, at the end of Listen, keeps deleted stories (and the earlier versions of edited ones) for 30 days: each can be played and **Restore**d to its set, or to the other set of its affect if that one is full.
-**Rearrange** (top right) or **Move**: tap a story, then a story in the other set with the same affect to swap them, or **Move here**.
+**Rearrange** (top right) or **Move**: tap a story, then a story in any other set to swap them, or **Move here** in the set you want.
+This works across affects, so a story saved as happy can be moved to a challenging set, and the swap exchanges their affects.
 A move or swap is only offered when both sets stay at or under 11:00.
 Only one player plays at a time, and every story's audio downloads in the background when the screen opens, so play starts right away.
 The set and individual story players have seek bars that move through the name and story recordings.
@@ -290,9 +299,13 @@ Every request must be signed in.
 Only a group's members can read the group, its members and its stories, and save, move or delete its stories.
 Only the owner creates, lists and cancels invites, and removes members; the owner can't leave or be removed.
 Nobody can add themselves to a group except by starting it or accepting an invite for their own confirmed email address.
+<<<<<<< HEAD
 Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`setNumber` between 1 and 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
 Members save a session for each set they play, once, and the player adds `endedAt` when it plays to the end; nothing else about a session changes, nobody can delete one, and its checklist answers must come from fixed lists.
 Any member can answer the hearing aid question once (`hearingAid` on the group); it can't change after that.
+=======
+Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`affect` and `setNumber`, to a valid affect and set 1 or 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
+>>>>>>> origin/main
 Deleting is a soft delete: a story and its audio can be removed for good only after it has been deleted for 30 days (`RECOVERY_DAYS` in `src/stories.js`, mirrored in the rules).
 The free plan can't run scheduled jobs, so the app removes expired stories whenever a member loads the stories (`removeExpiredStories()`).
 Everything else is denied.
@@ -314,6 +327,7 @@ Everything else is denied.
 - `src/LiveWaveform.jsx`: the live volume bars shown while recording.
 - `src/StoryEditor.jsx`: the story editor screen; `src/EditStory.jsx` opens a saved story in it.
 - `src/audioEdit.js`: the editing engine: decoding, finding pauses, the edit plan, time-stretching (SoundTouch) and MP3 encoding (LAME).
+- `src/transcribe.js` and `src/transcribe.worker.js`: create word-timestamped English transcripts on-device with Transformers.js and Whisper.
 - `src/StoryLibrary.jsx`: the Listen screen: play, rearrange, move and delete stories.
 - `src/PlaySession.jsx`: playing a set to the patient: the checklists, then the set.
 - `src/playing.js`: the playing rules: the checklist items, the signs of being awake, and picking a random set and story order.
@@ -340,5 +354,5 @@ Everything else is denied.
 
 ## Third-party audio code
 
-The story editor uses [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1) to speed up speech without changing its pitch, and [wasm-media-encoders](https://github.com/arseneyr/wasm-media-encoders) (MIT, containing the LGPL LAME encoder) to save MP3.
-Both load only when the editor is used.
+The story editor uses [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1) to speed up speech without changing its pitch, [wasm-media-encoders](https://github.com/arseneyr/wasm-media-encoders) (MIT, containing the LGPL LAME encoder) to save MP3, and [Transformers.js](https://github.com/huggingface/transformers.js) with [Whisper tiny English](https://huggingface.co/Xenova/whisper-tiny.en) (Apache-2.0) for on-device transcripts.
+SoundTouchJS and the MP3 encoder load only when the editor needs them; the speech model starts loading when the app opens.

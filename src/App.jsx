@@ -15,7 +15,8 @@ import { displayName, signOut, useUser } from './auth.js';
 import { isValidGroupId, listMyGroups } from './group.js';
 import { BackIcon, HeadphonesIcon, HomeIcon, MicIcon, PeopleIcon, PlayOutlineIcon } from './icons.jsx';
 import { listStories, removeExpiredStories } from './storage.js';
-import { isPastRecovery, summarizeSets } from './stories.js';
+import { SET_MIN, formatTime, isPastRecovery, setKey, setName, summarizeSets } from './stories.js';
+import { preloadTranscriber } from './transcribe.js';
 
 // Screens: { name: 'home' }, { name: 'sets' }, { name: 'stories' }, { name: 'record', affect, setNumber },
 // { name: 'edit', storyId }, { name: 'play' } (playing a set to the patient), { name: 'team' } (Care team),
@@ -96,6 +97,9 @@ const FOCUSED = ['record', 'edit', 'play'];
 // session (screens, stories, the current group) carries over to the next.
 export default function App() {
   const user = useUser();
+  useEffect(() => {
+    preloadTranscriber().catch(() => {});
+  }, []);
   if (user === undefined) return <Loading />;
   if (!user) return <SignIn invited={readInviteFromUrl() !== null} />;
   return <CareApp key={user.uid} user={user} />;
@@ -155,15 +159,18 @@ function CareApp({ user }) {
     setError('');
     try {
       const list = await listStories(groupId);
-      if (loadId === storyLoadId.current && groupId === activeGroupId.current) {
+      const current = loadId === storyLoadId.current && groupId === activeGroupId.current;
+      if (current) {
         setStories(list);
         setStoriesGroupId(groupId);
       }
       removeExpiredStories(list); // in the background; they're gone from the list next time
+      return current ? list : null;
     } catch (err) {
       if (loadId === storyLoadId.current && groupId === activeGroupId.current) {
         setError(`Could not load stories: ${err.message}`);
       }
+      return null;
     }
   }
 
@@ -320,13 +327,29 @@ function CareApp({ user }) {
     setNotice(message);
   }
 
-  // After an edited story is saved: reload the stories, go back to Listen, and say so.
-  async function editSaved(message) {
+  // After an edit, reload the list. If it left the set short, continue straight to recording there.
+  async function editSaved(message, editedStory) {
+    const previousSetTotal = summary[setKey(editedStory.affect, editedStory.setNumber)].total;
     setSavingEdit(true); // the old story disappears from the list before this screen closes
-    await refreshStories();
-    setNotice(message);
-    goBack();
-    setSavingEdit(false);
+    try {
+      const updatedStories = await refreshStories();
+      // Deleted stories (including the version this edit replaced) don't count toward a set.
+      const setTotal = updatedStories
+        ? summarizeSets(updatedStories.filter((s) => !s.deletedAt))[setKey(editedStory.affect, editedStory.setNumber)].total
+        : null;
+      if (previousSetTotal >= SET_MIN && setTotal !== null && setTotal < SET_MIN) {
+        const entry = { name: 'record', affect: editedStory.affect, setNumber: editedStory.setNumber, depth: screen.depth };
+        history.replaceState(entry, '');
+        setScreen(entry);
+        window.scrollTo(0, 0);
+        setNotice(`${setName(editedStory.affect, editedStory.setNumber)} is now ${formatTime(SET_MIN - setTotal)} below the 9:00 minimum. Record another story to bring it back into range.`);
+      } else {
+        setNotice(message);
+        goBack();
+      }
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   if (groups === null) return <Loading text={groupsError ? '' : 'Loading your care teams...'} error={groupsError} />;
@@ -472,6 +495,7 @@ function CareApp({ user }) {
         affect={screen.affect}
         setNumber={screen.setNumber}
         summary={summary}
+        notice={notice}
         onSaved={finishRecording}
         onCancel={() => finishRecording()}
       />
