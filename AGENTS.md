@@ -182,6 +182,8 @@ An **Edit** button opens the story editor.
   - **Speed up or cut a part**: drag across part of the waveform, then play it at 1.1× or 1.2× (the voice keeps its natural pitch) or cut it.
   - **Add or record over a part**: tap a spot on the waveform and record a new part there, or drag across a part and record something in its place. Added parts show as red marks and can be moved afterwards: drag a mark, or a part recorded over by its box (or its edges, to change what it replaces), with **Listen** playing a few seconds either side; each can be removed (a part recorded over comes back).
   - **Play** the edited story before saving; **Undo all changes** starts over.
+  - The English transcript is created automatically in the editor, highlights each word during playback, and lets you tap a word to seek there.
+The speech model downloads in the background when the app opens, and the transcript is not saved.
   - Saving processes the audio in the browser and stores the story as MP3.
 An edited saved story replaces the old one in one step, so it's never half saved, and the earlier version goes to Recently deleted.
 - **Listen**: every set under Happy events and Challenging events, each with a whole-set player, its target status, and its stories.
@@ -300,6 +302,7 @@ Everything else is denied.
 - `src/LiveWaveform.jsx`: the live volume bars shown while recording.
 - `src/StoryEditor.jsx`: the story editor screen; `src/EditStory.jsx` opens a saved story in it.
 - `src/audioEdit.js`: the editing engine: decoding, finding pauses, the edit plan, time-stretching (SoundTouch) and MP3 encoding (LAME).
+- `src/transcribe.js` and `src/transcribe.worker.js`: create word-timestamped English transcripts on-device with Transformers.js and Whisper.
 - `src/StoryLibrary.jsx`: the Listen screen: play, rearrange, move and delete stories.
 - `src/ClipPlayer.jsx`: plays several clips back to back as one, as a full player or a compact row.
 - `src/audioCache.js`: keeps loaded audio in memory so replays don't download again.
@@ -322,5 +325,5 @@ Everything else is denied.
 
 ## Third-party audio code
 
-The story editor uses [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1) to speed up speech without changing its pitch, and [wasm-media-encoders](https://github.com/arseneyr/wasm-media-encoders) (MIT, containing the LGPL LAME encoder) to save MP3.
-Both load only when the editor is used.
+The story editor uses [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1) to speed up speech without changing its pitch, [wasm-media-encoders](https://github.com/arseneyr/wasm-media-encoders) (MIT, containing the LGPL LAME encoder) to save MP3, and [Transformers.js](https://github.com/huggingface/transformers.js) with [Whisper tiny English](https://huggingface.co/Xenova/whisper-tiny.en) (Apache-2.0) for on-device transcripts.
+SoundTouchJS and the MP3 encoder load only when the editor needs them; the speech model starts loading when the app opens.

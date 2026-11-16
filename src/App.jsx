@@ -15,6 +15,7 @@ import { isValidGroupId, listMyGroups } from './group.js';
 import { BackIcon, HeadphonesIcon, HomeIcon, MicIcon, PeopleIcon } from './icons.jsx';
 import { listStories, removeExpiredStories } from './storage.js';
 import { SET_MIN, formatTime, isPastRecovery, setKey, setName, summarizeSets } from './stories.js';
+import { preloadTranscriber } from './transcribe.js';
 
 // Screens: { name: 'home' }, { name: 'sets' }, { name: 'stories' }, { name: 'record', affect, setNumber },
 // { name: 'edit', storyId }, { name: 'team' } (Care team), { name: 'invite' }, { name: 'teams' }
@@ -91,6 +92,9 @@ const FOCUSED = ['record', 'edit'];
 // session (screens, stories, the current group) carries over to the next.
 export default function App() {
   const user = useUser();
+  useEffect(() => {
+    preloadTranscriber().catch(() => {});
+  }, []);
   if (user === undefined) return <Loading />;
   if (!user) return <SignIn invited={readInviteFromUrl() !== null} />;
   return <CareApp key={user.uid} user={user} />;

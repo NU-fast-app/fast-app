@@ -9,6 +9,7 @@ import {
 } from './audioEdit.js';
 import { formatTime } from './stories.js';
 import { useRecorder } from './useRecorder.js';
+import { transcribe } from './transcribe.js';
 
 const BARS = 64;
 const MIN_KEEP = 1; // the trim handles keep at least this much (seconds)
@@ -30,6 +31,24 @@ function seconds(value) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+// Map a time in the original recording to the point where it lands in the edited preview.
+function editedTimeAt(time, segments) {
+  let elapsed = 0;
+  for (const segment of segments) {
+    const duration = (segment.end - segment.start) / segment.rate;
+    if (segment.insert) {
+      elapsed += duration;
+    } else if (time < segment.start) {
+      return elapsed;
+    } else if (time <= segment.end) {
+      return elapsed + (time - segment.start) / segment.rate;
+    } else {
+      elapsed += duration;
+    }
+  }
+  return elapsed;
 }
 
 // "Length with the name: 5:21 → 4:58", and whether that fits.
@@ -73,6 +92,9 @@ export default function StoryEditor({ name, story, maxLength, limitText, onSave,
   const [preview, setPreview] = useState(null);
   const [position, setPosition] = useState(0); // edited story playback position, in milliseconds
   const [previewDuration, setPreviewDuration] = useState(null); // actual rendered duration, in milliseconds
+  const [transcript, setTranscript] = useState(null);
+  const [transcription, setTranscription] = useState({ status: 'idle', progress: null });
+  const transcriptionStartedRef = useRef(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const waveRef = useRef(null);
@@ -218,6 +240,33 @@ export default function StoryEditor({ name, story, maxLength, limitText, onSave,
     setPosition(positionMs);
     if (wasPlaying && positionMs < playbackDuration) startPreview(null, positionMs);
   }
+
+  async function createTranscript() {
+    if (transcriptionStartedRef.current) return;
+    transcriptionStartedRef.current = true;
+    setTranscription({ status: 'loading', progress: null });
+    setError('');
+    try {
+      const words = await transcribe(samples, SAMPLE_RATE, (event) => {
+        if (event.status === 'progress' && Number.isFinite(event.progress)) {
+          setTranscription({ status: 'loading', progress: Math.round(event.progress) });
+        } else if (event.status === 'transcribing') {
+          setTranscription({ status: 'transcribing', progress: null });
+        }
+      });
+      if (!words.length) throw new Error('No speech was recognized.');
+      setTranscript(words);
+      setTranscription({ status: 'ready', progress: null });
+    } catch (err) {
+      transcriptionStartedRef.current = false;
+      setTranscription({ status: 'error', progress: null });
+      setError(`Could not create a transcript: ${err.message}`);
+    }
+  }
+
+  useEffect(() => {
+    if (samples && transcription.status === 'idle' && !transcript) createTranscript();
+  }, [samples, transcript, transcription.status]);
 
   function seekKey(event) {
     const step = event.shiftKey ? 5000 : 1000;
@@ -440,6 +489,13 @@ export default function StoryEditor({ name, story, maxLength, limitText, onSave,
   const percent = (time) => `${(time / length) * 100}%`;
   const storyAfter = segments ? plannedLength(segments) * 1000 : 0;
   const playbackDuration = previewDuration ?? storyAfter;
+  const timedWords = useMemo(() => transcript?.map((word) => ({
+    ...word,
+    previewStart: editedTimeAt(word.start, segments) * 1000,
+    previewEnd: editedTimeAt(word.end, segments) * 1000,
+  })), [transcript, segments]);
+  const activeWord = timedWords?.findIndex((word) => word.previewEnd > word.previewStart
+    && position >= word.previewStart && position < word.previewEnd) ?? -1;
   const trimSaved = edits ? edits.trimStart + (length - edits.trimEnd) : 0;
   const savedByPauses = pauseSavings(pauses);
   const partCount = edits ? edits.speedups.length + edits.cuts.length : 0;
@@ -746,6 +802,44 @@ export default function StoryEditor({ name, story, maxLength, limitText, onSave,
               {!preview?.loading && <>{formatTime(position)} of {formatTime(playbackDuration)}</>}
             </span>
           </div>
+        </section>
+
+        <section className="card transcript-card" aria-label="Story transcript">
+          <div className="transcript-heading">
+            <strong>Transcript</strong>
+            {transcription.status === 'error' ? (
+              <button className="action edit" onClick={createTranscript} disabled={saving}>Try again</button>
+            ) : transcription.status === 'loading' ? (
+              <span className="transcript-status" role="status">
+                {transcription.progress === null ? 'Preparing transcript...' : `Preparing transcript ${transcription.progress}%`}
+              </span>
+            ) : transcription.status === 'transcribing' ? (
+              <span className="transcript-status" role="status">Listening for words...</span>
+            ) : null}
+          </div>
+          {timedWords ? (
+            <p className="transcript-words" aria-label="Tap a word to play from that point">
+              {timedWords.map((word, index) => (
+                <button
+                  key={`${word.start}-${index}`}
+                  className={`transcript-word${activeWord === index ? ' active' : ''}`}
+                  aria-current={activeWord === index ? 'true' : undefined}
+                  onClick={() => {
+                    const target = Math.min(word.previewStart, Math.max(0, playbackDuration - 1));
+                    seekPreview(target);
+                    if (!(preview && preview.around === null && !preview.loading)) startPreview(null, target);
+                  }}
+                  disabled={saving || preview?.loading}
+                >
+                  {word.text}
+                </button>
+              ))}
+            </p>
+          ) : transcription.status === 'loading' || transcription.status === 'transcribing' ? (
+            <p className="transcript-note">The transcript will appear here.</p>
+          ) : (
+            <p className="transcript-note">The transcript will appear here.</p>
+          )}
         </section>
 
         <section className="card tool-list">

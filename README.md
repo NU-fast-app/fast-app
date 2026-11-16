@@ -92,7 +92,7 @@ The free Spark plan is enough.
 ## Built with
 
 React, Vite and Firebase (Authentication, Cloud Firestore and Hosting).
-The story editor uses [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1) and [wasm-media-encoders](https://github.com/arseneyr/wasm-media-encoders) (MIT, with the LGPL LAME encoder).
+The story editor uses [SoundTouchJS](https://github.com/cutterbl/SoundTouchJS) (LGPL-2.1), [wasm-media-encoders](https://github.com/arseneyr/wasm-media-encoders) (MIT, with the LGPL LAME encoder), and [Transformers.js](https://github.com/huggingface/transformers.js) with the [Whisper tiny English model](https://huggingface.co/Xenova/whisper-tiny.en) for on-device transcripts.
 
 ## For contributors and coding agents
 
