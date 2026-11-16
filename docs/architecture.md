@@ -134,6 +134,13 @@ When seeking to another clip, the player waits for its metadata before applying 
 - Two looks: the full player (play button, label, progress bar) and `compact` (a story row).
 - `onPlay()` runs each time playback starts from a tap and `onEnd()` when the last clip finishes; `showLeft` shows the time left instead of the total.
 
+## Playback progress on Home
+
+Home loads the current care team's sessions when it opens or the team changes.
+`playbackProgress.js` counts only sessions with `endedAt`: distinct sets for today, every completed session toward 168, and days with all four distinct sets.
+The recorded `day` uses the playing device's local calendar; today uses `localDay()` on the viewing device.
+The screen shows loading and retry states if the records are unavailable.
+
 ## Playing to the patient (`src/PlaySession.jsx`, `src/playing.js`, `src/sessions.js`)
 
 - `PlaySession` is a small state machine over `step`, in the order of slide 26: `awake` (signs of being awake) → `prepare` (the sound check and checklist) → `playing` → `done`.

@@ -13,7 +13,9 @@
 // repeats from the start to fill its length, so the set totals stay as designed. The speech is kept in
 // node_modules/.cache/fast-seed-audio, so only the first run makes it. Without `say` (on Windows or
 // Linux), the stories are a voice-like hum instead.
-// Accounts, groups, invites and stories are written through the security rules in firestore.rules,
+// Sam's team also gets sample sessions for playback progress. Historical sessions include all four
+// sets, even though the current sample stories leave Challenging set 2 empty.
+// Accounts, groups, invites, stories and sessions are written through the security rules in firestore.rules,
 // the same way the app saves them, so a change the rules reject makes this script fail.
 
 import { execFile } from 'node:child_process';
@@ -29,6 +31,8 @@ import {
   Bytes, collection, connectFirestoreEmulator, doc, getFirestore, serverTimestamp, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore/lite';
 import { loadEnv } from 'vite';
+import { localDay, prepareItems } from '../src/playing.js';
+import { SETS } from '../src/stories.js';
 
 const STORIES = [
   // title, storyteller, relationship, affect, setNumber, length with the name clip, long pauses
@@ -364,6 +368,27 @@ async function join(user, groupId, inviteId, access) {
   await batch.commit();
 }
 
+// Save and finish sample sessions as the signed-in player, following the same rules as the app.
+async function seedSession(groupId, day, { affect, setNumber }, complete = true) {
+  const sessionRef = doc(collection(db, 'groups', groupId, 'sessions'));
+  await setDoc(sessionRef, {
+    playedBy: auth.currentUser.uid,
+    affect,
+    setNumber,
+    day,
+    startedAt: serverTimestamp(),
+    prepared: prepareItems(false).map((item) => item.key),
+    awake: [],
+  });
+  if (complete) await updateDoc(sessionRef, { endedAt: serverTimestamp() });
+}
+
+function dayBefore(today, days) {
+  const date = new Date(today);
+  date.setDate(date.getDate() - days);
+  return localDay(date);
+}
+
 const env = loadEnv('emulator', fileURLToPath(new URL('..', import.meta.url)), 'VITE_');
 const projectId = env.VITE_FIREBASE_PROJECT_ID;
 const emulator = env.VITE_FIRESTORE_EMULATOR;
@@ -405,6 +430,12 @@ for (const { story } of GROUP_STORIES.filter((g) => g.groupId === 'family-b')) a
 
 const ann = await signInAs(ANN);
 await startGroup(ann, 'default', 'Sam Smith');
+const today = new Date();
+await seedSession('default', localDay(today), SETS[0]);
+for (const days of [1, 2]) {
+  for (const set of SETS) await seedSession('default', dayBefore(today, days), set);
+}
+await seedSession('default', dayBefore(today, 3), SETS[0], false);
 for (const story of STORIES) await saveStory(db, story, 'default');
 // A deleted story, so Listen's Recently deleted has something to restore.
 const deleted = await saveStory(db, ['Grandpa\'s fishing trip', 'Ann Smith', 'Mother', 'happy', 1, '1:05'], 'default');
@@ -419,6 +450,7 @@ await join(auth.currentUser, 'default', jeffInvite, 'stories');
 await signOut(auth);
 
 console.log(`Added ${STORIES.length + GROUP_STORIES.length} sample stories in 3 groups (and 1 deleted one), and these accounts (password "${PASSWORD}"):`);
+console.log('  Sam Smith has 9 completed sessions across 2 completed days, including 1 set today, and 1 unfinished session.');
 console.log(`  ${ANN.email}   leads Sam Smith's care team (Jeff records and edits; Mia is invited to play, dave@example.com as clinician)`);
 console.log(`  ${JEFF.email}  records and edits in Sam Smith's care team, leads Family A`);
 console.log(`  ${MIA.email}   leads Family B. Her invite to play for Sam Smith: http://localhost:5173/?group=default&invite=${miaInvite}`);

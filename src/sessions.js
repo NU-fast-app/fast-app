@@ -16,6 +16,13 @@ import { isValidGroupId } from './group.js';
 
 const sessionsRef = (groupId) => collection(db, 'groups', groupId, 'sessions');
 
+// All sessions for a care team, including those played by other members.
+export async function listSessions(groupId) {
+  if (!isValidGroupId(groupId)) throw new Error('Choose a valid care team first.');
+  const snapshot = await getDocs(sessionsRef(groupId));
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
 // The sessions played on `day`, oldest first.
 export async function listSessionsOn(groupId, day) {
   if (!isValidGroupId(groupId)) throw new Error('Choose a valid care team first.');
