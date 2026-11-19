@@ -430,6 +430,61 @@ describe('playing sessions', () => {
   test('a new session has not ended yet', () => assertFails(save(PAT, { endedAt: serverTimestamp() })));
 });
 
+describe('answers after a session', () => {
+  const BEHAVIORS = ['eyesOpen', 'eyesToArousal', 'followsInstruction', 'intentionalMovement', 'turnsToSound',
+    'makesSounds', 'respondsToTouch', 'answersQuestions', 'usesObject'];
+  const changes = (fields = {}) => ({ ...Object.fromEntries(BEHAVIORS.map((key) => [key, 'same'])), ...fields });
+  const after = (fields = {}) => ({ changes: changes(), agitated: false, ...fields });
+  // A session Pat played, ended unless `ended` is false.
+  const played = (ended = true) => env.withSecurityRulesDisabled((context) =>
+    setDoc(doc(context.firestore(), 'groups/sam/sessions/old'), {
+      playedBy: 'pat', affect: 'happy', setNumber: 2, day: '2026-11-09', startedAt: new Date(),
+      prepared: ['soundCheck', 'told', 'earbuds', 'quiet', 'outOfView'], awake: [],
+      ...(ended ? { endedAt: new Date() } : {}),
+    }));
+  const answer = (person, value) => updateDoc(doc(as(person), 'groups/sam/sessions/old'), { after: value });
+
+  test('the player adds them once the set has ended', async () => {
+    await played();
+    await assertSucceeds(answer(PAT, after({ changes: changes({ eyesOpen: 'more', usesObject: 'less' }), agitated: true })));
+  });
+  test('only once', async () => {
+    await played();
+    await assertSucceeds(answer(PAT, after()));
+    await assertFails(answer(PAT, after({ agitated: true })));
+  });
+  test('not before the set has ended', async () => {
+    await played(false);
+    await assertFails(answer(PAT, after()));
+  });
+  test('only the player adds them', async () => {
+    await played();
+    await assertFails(answer(ANN, after()));
+    await assertFails(answer(MIA, after()));
+  });
+  test('every behavior is answered, and nothing else', async () => {
+    await played();
+    const { usesObject, ...missing } = changes();
+    await assertFails(answer(PAT, after({ changes: missing })));
+    await assertFails(answer(PAT, after({ changes: changes({ smiles: 'more' }) })));
+  });
+  test('each answer is more, same or less', async () => {
+    await played();
+    await assertFails(answer(PAT, after({ changes: changes({ makesSounds: 'a lot' }) })));
+    await assertFails(answer(PAT, after({ changes: changes({ makesSounds: 1 }) })));
+  });
+  test('agitated is yes or no, and nothing else is added', async () => {
+    await played();
+    await assertFails(answer(PAT, after({ agitated: 'no' })));
+    await assertFails(answer(PAT, { changes: changes() }));
+    await assertFails(answer(PAT, after({ note: 'hi' })));
+  });
+  test('nothing else changes with them', async () => {
+    await played();
+    await assertFails(updateDoc(doc(as(PAT), 'groups/sam/sessions/old'), { after: after(), awake: ['eyesOpen'] }));
+  });
+});
+
 describe('access levels', () => {
   const setAccess = (person, uid, access, extra = {}) => updateDoc(doc(as(person), `groups/sam/members/${uid}`), { access, ...extra });
 

@@ -1,10 +1,11 @@
 // Tests for picking what to play (src/playing.js): which sets can play today, the random pick and
-// the shuffled story order, and the sound check's chime (src/chime.js). `npm run test:unit`.
+// the shuffled story order, the questions after a session, and the sound check's chime
+// (src/chime.js). `npm run test:unit`.
 
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  localDay, pickSet, playableSets, prepareItems, shuffled,
+  AFTER, AWAKE, CHANGES, localDay, pickSet, playableSets, prepareItems, shuffled,
 } from '../src/playing.js';
 import { CHIME_DURATION, chimeSamples, chimeWav } from '../src/chime.js';
 
@@ -101,4 +102,12 @@ describe('the sound check chime', () => {
     assert.equal(String.fromCharCode(...bytes.slice(8, 12)), 'WAVE');
     assert.equal(bytes.length, 44 + chimeSamples().length * 2);
   });
+});
+
+test('after a session, the 7 signs of being awake and 2 more are asked about', () => {
+  const keys = AFTER.map((behavior) => behavior.key);
+  assert.equal(keys.length, 9);
+  assert.equal(new Set(keys).size, 9);
+  assert.deepEqual(keys.slice(0, 7), AWAKE.map((sign) => sign.key));
+  assert.deepEqual(CHANGES.map((change) => change.key), ['more', 'same', 'less']);
 });

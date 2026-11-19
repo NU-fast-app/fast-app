@@ -205,7 +205,7 @@ This works across affects, so a story saved as happy can be moved to a challengi
 A move or swap is only offered when both sets stay at or under 11:00.
 Only one player plays at a time, and every story's audio downloads in the background when the screen opens, so play starts right away.
 The set and individual story players have seek bars that move through the name and story recordings.
-- **Play Stories** (Home, or Play in the menu), in 3 steps, in the order of slide 26.
+- **Play Stories** (Home, or Play in the menu), in 4 steps, in the order of slides 26 and 27.
 For testing, any set with stories can be played; later, playing opens only once all 4 sets are approved.
   1. **Is Sam awake?**: tick the signs of being awake.
 With none, the app suggests waiting an hour or gently waking them, and offers **Continue** or **Not now**.
@@ -213,6 +213,9 @@ With none, the app suggests waiting an hour or gently waking them, and offers **
 Continue stays greyed out until every item is ticked.
   3. **Playing**: a random set not yet played today, its stories shuffled, with the time left.
 The session is saved when Play is first tapped and marked as ended if the set plays to the end, which ends with "Take the earbuds out".
+  4. **How is Sam now?**: after the earbuds come out, **More**, **Same** or **Less** for each of 9 behaviors compared to before the stories (the 7 signs of being awake, answering questions about the room and showing how to use an object), then whether the patient became agitated.
+**Yes** suggests stopping the sessions for now and checking again each week.
+Done stays greyed out until every question is answered, and the answers are saved on the session.
 Once every set with stories has played that day, Play says the next session is tomorrow.
 - The phone's back button moves between screens.
 
@@ -241,7 +244,8 @@ The design canvas linked above has every screen on phone and computer, the reaso
 - The eligibility survey.
 - Editing a story's title, storyteller or relationship after it's saved.
 - Clinician comments and approval, and automatically regrouping stories to fit the targets.
-- The rest of playing: the post-session checklist, the approval gate, play instructions, the 2-hour warning and reminders.
+- The rest of playing: the approval gate, play instructions, the 2-hour warning and reminders.
+- Showing the answers to the questions after each session; they're saved, but where to show them is a question for the client.
 
 ## Firebase
 
@@ -277,7 +281,8 @@ groups/{groupId}/members/{uid}           uid, name, email, joinedAt, access (the
 groups/{groupId}/invites/{inviteId}      email, groupName, invitedBy, invitedByName, access, createdAt
 groups/{groupId}/sessions/{id}           playedBy, affect, setNumber, day ("YYYY-MM-DD"), startedAt,
                                          prepared (checklist keys), awake (signs of being awake),
-                                         endedAt (once the set has played to the end)
+                                         endedAt (once the set has played to the end),
+                                         after (the answers after it: changes, agitated)
 treatments/demo/stories/{id}             title, storyteller, relationship, affect, setNumber,
                                          group, nameDuration, storyDuration, type, nameSize, size,
                                          chunkCount, createdAt, and once deleted: deletedAt,
@@ -309,7 +314,7 @@ Only the owner and administrators create, list and cancel invites, change member
 Someone joins with exactly the access level of their invite.
 Nobody can add themselves to a group except by starting it or accepting an invite for their own confirmed email address.
 Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`affect` and `setNumber`, to a valid affect and set 1 or 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
-Members who can play save a session for each set they play, once, and the player adds `endedAt` when it plays to the end; nothing else about a session changes, nobody can delete one, and its checklist answers must come from fixed lists.
+Members who can play save a session for each set they play, once, and the player adds `endedAt` when it plays to the end, then `after` (the answers to the questions after it); nothing else about a session changes, nobody can delete one, and its checklist answers must come from fixed lists.
 Any member who can play answers the hearing aid question once (`hearingAid` on the group); it can't change after that.
 Deleting is a soft delete: a story and its audio can be removed for good only after it has been deleted for 30 days (`RECOVERY_DAYS` in `src/stories.js`, mirrored in the rules).
 The free plan can't run scheduled jobs, so the app removes expired stories whenever a member loads the stories (`removeExpiredStories()`).

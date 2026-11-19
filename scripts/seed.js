@@ -31,7 +31,7 @@ import {
   Bytes, collection, connectFirestoreEmulator, doc, getFirestore, serverTimestamp, setDoc, updateDoc, writeBatch,
 } from 'firebase/firestore/lite';
 import { loadEnv } from 'vite';
-import { localDay, prepareItems } from '../src/playing.js';
+import { AFTER, localDay, prepareItems } from '../src/playing.js';
 import { SETS } from '../src/stories.js';
 
 const STORIES = [
@@ -369,6 +369,7 @@ async function join(user, groupId, inviteId, access) {
 }
 
 // Save and finish sample sessions as the signed-in player, following the same rules as the app.
+// A finished one also gets answers to the questions after it: no change in anything.
 async function seedSession(groupId, day, { affect, setNumber }, complete = true) {
   const sessionRef = doc(collection(db, 'groups', groupId, 'sessions'));
   await setDoc(sessionRef, {
@@ -380,7 +381,11 @@ async function seedSession(groupId, day, { affect, setNumber }, complete = true)
     prepared: prepareItems(false).map((item) => item.key),
     awake: [],
   });
-  if (complete) await updateDoc(sessionRef, { endedAt: serverTimestamp() });
+  if (!complete) return;
+  await updateDoc(sessionRef, { endedAt: serverTimestamp() });
+  await updateDoc(sessionRef, {
+    after: { changes: Object.fromEntries(AFTER.map((behavior) => [behavior.key, 'same'])), agitated: false },
+  });
 }
 
 function dayBefore(today, days) {

@@ -68,10 +68,15 @@ rules_version = '2';
 //   - awake: list (possibly empty) of the signs of being awake the patient showed: "eyesOpen",
 //     "eyesToArousal", "followsInstruction", "intentionalMovement", "turnsToSound", "makesSounds"
 //     and "respondsToTouch"
-// Field added later, once:
+// Fields added later, once each:
 //   - endedAt: timestamp - server time when the set played to the end; absent if it was stopped
+//   - after: map, the answers to the questions after the session, added once endedAt is there:
+//       changes: map from each of "eyesOpen", "eyesToArousal", "followsInstruction",
+//         "intentionalMovement", "turnsToSound", "makesSounds", "respondsToTouch",
+//         "answersQuestions" and "usesObject" to "more", "same" or "less"
+//       agitated: bool - whether the patient became agitated
 // Members can read a group's sessions, and those who can play save their own. The member who played
-// one adds endedAt; nothing else changes, and nobody can delete one.
+// one adds endedAt, then after; nothing else changes, and nobody can delete one.
 //
 // Collection: treatments/{treatmentId}/stories
 // Treatment ID: only "demo"; stories are split by group instead (the `group` field).
@@ -115,7 +120,7 @@ rules_version = '2';
 // It lists a group's stories with where('group', '==', groupId), reads chunks by ID, moves a
 // story by updating only its affect and setNumber, and deletes or restores one by updating it.
 // It lists a day's sessions with where('day', '==', day), saves one with a single add, and adds
-// endedAt with a single update.
+// endedAt, then after, with a single update each.
 //
 // ===============================================================
 
@@ -408,6 +413,33 @@ service cloud.firestore {
         && request.resource.data.endedAt == request.time;
     }
 
+    // An answer to a question after a session. Must match CHANGES in src/playing.js.
+    function isChange(value) {
+      return value in ['more', 'same', 'less'];
+    }
+
+    // After the set played to the end, its player adds the answers to the questions after it, once,
+    // and nothing else changes. Every behavior in AFTER (src/playing.js) is answered.
+    function isAnsweringAfter() {
+      let after = request.resource.data.after;
+      let behaviors = ['eyesOpen', 'eyesToArousal', 'followsInstruction', 'intentionalMovement',
+                       'turnsToSound', 'makesSounds', 'respondsToTouch', 'answersQuestions', 'usesObject'];
+      return resource.data.playedBy == request.auth.uid
+        && 'endedAt' in resource.data
+        && !('after' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['after'])
+        && after is map
+        && after.keys().hasAll(['changes', 'agitated']) && after.keys().hasOnly(['changes', 'agitated'])
+        && after.agitated is bool
+        && after.changes is map
+        && after.changes.keys().hasAll(behaviors) && after.changes.keys().hasOnly(behaviors)
+        && isChange(after.changes.eyesOpen) && isChange(after.changes.eyesToArousal)
+        && isChange(after.changes.followsInstruction) && isChange(after.changes.intentionalMovement)
+        && isChange(after.changes.turnsToSound) && isChange(after.changes.makesSounds)
+        && isChange(after.changes.respondsToTouch) && isChange(after.changes.answersQuestions)
+        && isChange(after.changes.usesObject);
+    }
+
     function isValidStoryChunk(treatmentId, storyId, chunkId, data) {
       return data.keys().hasAll(['data']) && data.keys().hasOnly(['data'])
         && data.data is bytes && data.data.size() >= 1 && data.data.size() <= 1000000
@@ -456,7 +488,7 @@ service cloud.firestore {
       match /sessions/{sessionId} {
         allow read: if isMember(groupId);
         allow create: if canPlay(groupId) && isValidSession(request.resource.data);
-        allow update: if isMember(groupId) && isEndingSession();
+        allow update: if isMember(groupId) && (isEndingSession() || isAnsweringAfter());
         allow delete: if false;
       }
     }
