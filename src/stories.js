@@ -19,6 +19,7 @@ const MINUTE = 60_000; // ms
 export const SET_MIN = 9 * MINUTE;
 export const SET_MAX = 11 * MINUTE;
 export const STORY_MAX = 5 * MINUTE; // must match firestore.rules
+export const STORY_MAX_WORDS = `${STORY_MAX / MINUTE} minutes`; // "5 minutes", for instructions
 export const STORY_WARN = 4.5 * MINUTE; // the story timer turns yellow here
 export const NAME_MAX = 1 * MINUTE; // saying a name 3 times takes seconds; must match firestore.rules
 

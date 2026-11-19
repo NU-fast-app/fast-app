@@ -91,7 +91,7 @@ Screens use the care team's name for the patient, since that's the name the fami
 The relationship list includes an Other option with a text field for relationships not listed.
 A five-card guide shows the selected set, microphone access and the recording steps, with iPhone and Android microphone permission screenshots.
 It's a dialog over the record screen, not a screen of its own, so it never stands between someone and the Start button.
-It opens by itself the first time someone records on that device; after that, the info button in the top right corner opens it at the card for the current step.
+It opens by itself the first time someone records on that device; after that, **Instructions** in the top right corner opens it at the card for the current step.
 Close, Escape or a tap outside closes it, and it can't be opened while recording.
 It keeps one size on every card, so Next and Previous stay in the same place; on a short phone the card scrolls between them.
 The timer shows the 5:00 limit and turns yellow at 4:30 (slide 14).

@@ -175,7 +175,7 @@ On a phone, **Menu** (top right) shows your account and opens Home, Record a Sto
 - **Record a story**: pick a set; each shows its stories, total and time left to go, with a bar from 0:00 to 11:00 and the 9:00 to 11:00 target shaded.
 A set in range shows "Ready" and can't take more stories.
 - **Recording a story**, in 3 steps (shown under the set's name at the top).
-A guide to recording opens over the screen the first time on each device, and from the info button (top right) after that.
+A guide to recording opens over the screen the first time on each device, and from **Instructions** (top right) after that.
   1. Record the storyteller saying the patient's name 3 times.
   2. Record the story.
 The timer continues from the name clip, so it shows the whole story's length toward 5:00, and turns yellow at 4:30.
