@@ -1,8 +1,9 @@
-// Rules for playing story sets to the patient, from the FAST project doc (slides 22 to 26).
+// Rules for playing story sets to the patient, from the FAST project doc (slides 22 to 27).
 //
 // Each session plays one set, picked at random from the sets not yet played that day, with its
 // stories in random order. Before it plays, the caregiver goes through a checklist (PREPARE) and
-// says which signs of being awake the patient shows (AWAKE).
+// says which signs of being awake the patient shows (AWAKE). After it plays, they say whether the
+// patient shows more, the same or less of each behavior in AFTER, and whether they became agitated.
 // Until clinician approval is built, any set with stories can be played, so testers can try it.
 
 import { SETS, setKey, storiesInSet } from './stories.js';
@@ -27,6 +28,21 @@ export const AWAKE = [
   { key: 'turnsToSound', label: 'Turns their head or body toward a sound or voice' },
   { key: 'makesSounds', label: 'Makes sounds on their own or in response to something you do' },
   { key: 'respondsToTouch', label: 'Moves more, or shows more facial expression or voice, when you touch or talk to them' },
+];
+
+// After a session: compared to before the stories, does the patient show more, the same or less of
+// each of these (slide 24)? The 7 signs of being awake, and 2 more. Must match firestore.rules.
+export const AFTER = [
+  ...AWAKE,
+  { key: 'answersQuestions', label: 'Answers questions about the room' },
+  { key: 'usesObject', label: 'Shows how to use an object' },
+];
+
+// The answers to each AFTER question, in the order they're shown. Must match firestore.rules.
+export const CHANGES = [
+  { key: 'more', label: 'More' },
+  { key: 'same', label: 'Same' },
+  { key: 'less', label: 'Less' },
 ];
 
 // The checklist items a patient needs: all of them, or all but the hearing aid.

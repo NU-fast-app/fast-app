@@ -521,6 +521,12 @@ button:disabled {
   background-color: var(--done-bg);
 }
 
+/* Something to consider, not a success: a quiet grey note. */
+.notice.caution {
+  color: var(--text);
+  background-color: var(--well);
+}
+
 .error {
   margin: 0;
   font-size: 0.9375rem;
@@ -1413,6 +1419,21 @@ body:has(.guide[open]) { overflow: hidden; }
 /* "Patient may not be awake yet": the advice under the bold question reads as plain text. */
 .confirm p.card-text {
   font-weight: 400;
+}
+
+/* A question after a session: the behavior, then More, Same and Less. */
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem 1rem;
+  border-radius: 1.125rem;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-small);
+}
+
+.question-label {
+  line-height: 1.35;
 }
 
 /* The set playing, in its affect's color. */

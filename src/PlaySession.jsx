@@ -4,16 +4,20 @@ import { CHIME_DURATION, chimeWav } from './chime.js';
 import NavBar from './NavBar.jsx';
 import { setHearingAid } from './group.js';
 import { CheckIcon } from './icons.jsx';
-import { AWAKE, localDay, pickSet, playableSets, prepareItems, shuffled } from './playing.js';
+import {
+  AFTER, AWAKE, CHANGES, localDay, pickSet, playableSets, prepareItems, shuffled,
+} from './playing.js';
 import { listSessionsOn, markSessionEnded, saveSession } from './sessions.js';
 import { loadStoryAudio, splitClips } from './storage.js';
 import { setKey, setName, storiesInSet } from './stories.js';
 
-// Playing a story set to the patient, in 3 steps, in the order of slide 26:
+// Playing a story set to the patient, in 4 steps, in the order of slides 26 and 27:
 //   1. "Is Sam awake?": which signs of being awake the patient shows. With none, it suggests waiting,
 //      but they can still go on.
 //   2. "Get ready": a sound check and the checklist (hearing aid, told, earbuds, quiet room, out of view).
 //   3. The set plays: one picked at random from the sets not yet played today, its stories shuffled.
+//   4. Once it has played to the end: take the earbuds out, then "How is Sam now?", the questions
+//      after a session (AFTER, and whether the patient became agitated).
 // The session is saved when the set starts playing, and marked as ended if it plays to the end.
 // `group` is the current care team; `onHearingAid(answer)` updates it once the hearing aid question
 // is answered. `onDone(message)` and `onCancel()` leave the screen.
@@ -21,11 +25,13 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
   const { name } = group; // the patient's name
   const [plan, setPlan] = useState(null); // { affect, setNumber, stories, day }, or { none: 'empty' | 'played' }
   const [clips, setClips] = useState(null); // the set's clips in playing order, once loaded
-  const [step, setStep] = useState('awake'); // 'awake', 'prepare', 'playing' or 'done'
+  const [step, setStep] = useState('awake'); // 'awake', 'prepare', 'playing', 'done' or 'after'
   const [hearingAid, setHearingAidAnswer] = useState(group.hearingAid); // undefined until answered
   const [prepared, setPrepared] = useState([]); // checklist keys ticked
   const [awake, setAwake] = useState([]); // signs of being awake ticked
   const [notAwake, setNotAwake] = useState(false); // asking whether to go on with no signs of being awake
+  const [changes, setChanges] = useState({}); // after the session: AFTER key -> CHANGES key
+  const [agitated, setAgitated] = useState(null); // after the session: true or false, once answered
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const saved = useRef(null); // the session being saved: a promise of its id
@@ -61,6 +67,7 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
 
   const items = prepareItems(hearingAid === true);
   const ready = hearingAid !== undefined && items.every((item) => prepared.includes(item.key));
+  const answered = AFTER.every((behavior) => changes[behavior.key]) && agitated !== null;
   const set = plan && !plan.none ? setName(plan.affect, plan.setNumber) : '';
 
   function toggle(list, setList, key) {
@@ -121,13 +128,19 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
     });
   }
 
+  // The questions after the session are answered: leave.
+  function finishAfter() {
+    if (!answered) return;
+    onDone(`Played ${set} to ${name}.`);
+  }
+
   const errorMessage = error && <p className="error" role="alert">{error}</p>;
-  const stepNumber = { awake: 1, prepare: 2, playing: 3, done: 3 }[step];
+  const stepNumber = { awake: 1, prepare: 2, playing: 3, done: 4, after: 4 }[step];
   const navBar = (
     <NavBar
-      left={step !== 'done' && <button className="nav-button" onClick={onCancel}>Cancel</button>}
+      left={['awake', 'prepare', 'playing'].includes(step) && <button className="nav-button" onClick={onCancel}>Cancel</button>}
       title={set || 'Play stories'}
-      subtitle={set && `Step ${stepNumber} of 3`}
+      subtitle={set && `Step ${stepNumber} of 4`}
     />
   );
 
@@ -254,15 +267,74 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
         {step === 'done' && (
           <>
             <h1 className="page-title">{set} is done</h1>
-            <p className="lead">Take the earbuds out of {name}&apos;s ears.</p>
+            <p className="lead">Take the earbuds out of {name}&apos;s ears. Then answer a few questions about how {name} is now.</p>
             {errorMessage}
             <div className="actions">
-              <button className="pill pill-primary" onClick={() => onDone(`Played ${set} to ${name}.`)}>Done</button>
+              <button
+                className="pill pill-primary"
+                onClick={() => {
+                  setStep('after');
+                  window.scrollTo(0, 0);
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 'after' && (
+          <>
+            <h1 className="page-title">How is {name} now?</h1>
+            <p className="lead">Compared to before the stories, does {name} do each of these more, the same or less?</p>
+            {AFTER.map((behavior) => (
+              <Question
+                key={behavior.key}
+                id={behavior.key}
+                label={behavior.label}
+                options={CHANGES}
+                value={changes[behavior.key]}
+                onChange={(change) => setChanges({ ...changes, [behavior.key]: change })}
+              />
+            ))}
+            <Question
+              id="agitated"
+              label={`Did ${name} become agitated?`}
+              options={[{ key: true, label: 'Yes' }, { key: false, label: 'No' }]}
+              value={agitated}
+              onChange={setAgitated}
+            />
+            {agitated && (
+              <p className="notice caution" role="status">
+                Consider stopping the sessions for now, and check again each week whether {name} becomes agitated.
+              </p>
+            )}
+            {errorMessage}
+            <div className="actions">
+              <button className="pill pill-primary" onClick={finishAfter} disabled={!answered}>Done</button>
+              {!answered && <p className="footnote">Answer every question to finish.</p>}
             </div>
           </>
         )}
       </main>
     </>
+  );
+}
+
+// One question with a few answers side by side, like More, Same and Less. `value` is the chosen
+// option's key, or undefined or null before one is chosen.
+function Question({ id, label, options, value, onChange }) {
+  return (
+    <section className="question">
+      <span className="question-label" id={`${id}-label`}>{label}</span>
+      <div className="segmented" role="radiogroup" aria-labelledby={`${id}-label`}>
+        {options.map((option) => (
+          <button key={String(option.key)} role="radio" aria-checked={value === option.key} onClick={() => onChange(option.key)}>
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
