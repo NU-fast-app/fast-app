@@ -168,7 +168,7 @@ Nobody can change their own access or the lead caregiver's.
 Only someone signed in with the invited email address, confirmed, can use it, and joining uses it up.
 - **Your care teams**: switch between the care teams you're on, or start another.
 The current one is in the URL as `?group=<groupId>`; without it the app opens the one used last on that device.
-- **Home**: whose care team it is, how many of the 4 sets are ready, a bar per set in its color, and what to do next (e.g. "Happy set 2 needs about 3 more minutes").
+- **Home**: whose care team it is, then playback progress (the client asked to remove the "N of 4 sets ready" card).
 Playback progress shows today's distinct completed sets, total completed sessions toward 168, and days with all four sets completed, across the care team.
 Set totals and the Listen screen include only the current care team's stories.
 On a phone, **Menu** (top right) shows your account and opens Home, Record a Story, Listen and Edit Stories, Play Stories, Care team, Your care teams and Sign out.
