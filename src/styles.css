@@ -1105,14 +1105,9 @@ body:has(.guide[open]) { overflow: hidden; }
   font-weight: 600;
 }
 
-.recording-set-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+.timer-hint.long {
+  color: var(--danger-text);
 }
-
-.recording-set-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; font-size: 0.9375rem; }
-.recording-set-row strong { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* "A little too long": the length, and how far over the limit it is. */
 .over-card .bar {

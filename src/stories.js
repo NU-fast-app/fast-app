@@ -23,16 +23,14 @@ export const STORY_MAX_WORDS = `${STORY_MAX / MINUTE} minutes`; // "5 minutes", 
 export const STORY_WARN = 4.5 * MINUTE; // the story timer turns yellow here
 export const NAME_MAX = 1 * MINUTE; // saying a name 3 times takes seconds; must match firestore.rules
 
-// Set progress includes the current, unsaved recording (including the name).
-export function recordingSetProgress(room, length) {
+// Where a set's 9:00 minimum and 11:00 maximum fall on the 0:00 to 5:00 bar while recording a story,
+// given the room the set has left. They're shown once that room is 5:00 or less.
+export function recordingSetProgress(room) {
   const minimum = Math.max(0, room - (SET_MAX - SET_MIN));
   return {
     show: room <= STORY_MAX,
     minimum,
     maximum: Math.max(0, room),
-    toMinimum: Math.max(0, minimum - length),
-    toMaximum: Math.max(0, room - length),
-    overMaximum: length > room,
   };
 }
 

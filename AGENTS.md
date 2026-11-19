@@ -178,8 +178,10 @@ A set in range shows "Ready" and can't take more stories.
 A guide to recording opens over the screen the first time on each device, and from **Instructions** (top right) after that.
   1. Record the storyteller saying the patient's name 3 times.
   2. Record the story.
-The timer continues from the name clip, so it shows the whole story's length toward 5:00, and turns yellow at 4:30.
-When the set has 5:00 or less of room left, the bar marks the 9:00 minimum and 11:00 maximum and shows the time remaining to each.
+The timer continues from the name clip, so it shows the whole story's length toward 5:00.
+The limit is 5:00, or the set's room if that's less.
+One line under the bar shows the time left; 30 seconds before the limit the bar turns yellow and it adds "Start wrapping up.", and past the limit the bar turns red and it says "Finish your story now."
+When the set has 5:00 or less of room left, the bar marks the 9:00 minimum and 11:00 maximum, and the time left counts to 11:00 ("left in this set").
 Finish waits a second after starting, so a double tap can't end the recording.
   3. Listen back, enter the title, storyteller, relationship and affect, then **Add story** or **Delete recording**.
 An **Edit** button opens the story editor.
