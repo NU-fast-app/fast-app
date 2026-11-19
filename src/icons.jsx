@@ -97,15 +97,6 @@ export function LockIcon() {
   );
 }
 
-export function InfoIcon() {
-  return (
-    <Icon>
-      <circle cx="12" cy="12" r="9" {...line} strokeWidth={2} />
-      <path d="M12 11v5.5M12 7.5v.01" {...line} />
-    </Icon>
-  );
-}
-
 export function CloseIcon() {
   return (
     <Icon>

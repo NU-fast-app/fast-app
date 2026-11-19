@@ -4,10 +4,10 @@ import NavBar from './NavBar.jsx';
 import RecordingGuide, { GUIDE_STEP, seenRecordingGuide } from './RecordingGuide.jsx';
 import { RecordButtons, RecorderCard } from './RecorderControls.jsx';
 import StoryEditor from './StoryEditor.jsx';
-import { InfoIcon, RedoIcon, ScissorsIcon } from './icons.jsx';
+import { RedoIcon, ScissorsIcon } from './icons.jsx';
 import { addStory } from './storage.js';
 import {
-  NAME_MAX, RELATIONSHIPS, SET_MAX, STORY_MAX, bestRecordingSet, fitsInSet, formatTime, setKey, setName, setStatus,
+  NAME_MAX, RELATIONSHIPS, SET_MAX, STORY_MAX, STORY_MAX_WORDS, bestRecordingSet, fitsInSet, formatTime, setKey, setName, setStatus,
 } from './stories.js';
 import { useRecorder } from './useRecorder.js';
 
@@ -20,7 +20,7 @@ const SAVE_ERRORS = {
 
 // Records one personal story into a set, in steps:
 //   name      record the patient's name said 3 times
-//   story     record the story (up to 5:00 with the name)
+//   story     record the story (up to 5 minutes, counting the name)
 //   tooLong   the story is over 5:00, or overSet: it would take the set over 11:00.
 //             Either edit it to fit, or record it again.
 //   edit      the story editor
@@ -170,13 +170,11 @@ export default function RecordStory({ groupId, affect: startAffect, setNumber, s
         subtitle={`Step ${stepNumber} of 3`}
         right={(
           <button
-            className="icon-button"
+            className="nav-button"
             onClick={() => setGuideStep(GUIDE_STEP[step])}
             disabled={saving || recorder.state === 'recording'}
-            aria-label="How to record a story"
-            title="How to record a story"
           >
-            <InfoIcon />
+            Instructions
           </button>
         )}
       />
@@ -200,7 +198,7 @@ export default function RecordStory({ groupId, affect: startAffect, setNumber, s
           <>
             <h1 className="page-title">Tell your story</h1>
             <div className="chips">
-              <span className="chip">Up to {formatTime(STORY_MAX)} with the name</span>
+              <span className="chip">Up to {STORY_MAX_WORDS}</span>
               {room < STORY_MAX && <span className={`chip tinted ${tint}`}>Room in this set: {formatTime(room)}</span>}
             </div>
             <RecorderCard tint={tint} recorder={recorder} length={nameTime + elapsed} room={room} story />

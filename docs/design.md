@@ -91,11 +91,13 @@ Screens use the care team's name for the patient, since that's the name the fami
 The relationship list includes an Other option with a text field for relationships not listed.
 A five-card guide shows the selected set, microphone access and the recording steps, with iPhone and Android microphone permission screenshots.
 It's a dialog over the record screen, not a screen of its own, so it never stands between someone and the Start button.
-It opens by itself the first time someone records on that device; after that, the info button in the top right corner opens it at the card for the current step.
+It opens by itself the first time someone records on that device; after that, **Instructions** in the top right corner opens it at the card for the current step.
 Close, Escape or a tap outside closes it, and it can't be opened while recording.
 It keeps one size on every card, so Next and Previous stay in the same place; on a short phone the card scrolls between them.
-The timer shows the 5:00 limit and turns yellow at 4:30 (slide 14).
-When the set has 5:00 or less of room, markers show where the set reaches 9:00 and 11:00, and a set progress readout shows the time remaining to each.
+The timer shows the 5:00 limit (slide 14).
+When the set has 5:00 or less of room, markers show where the set reaches 9:00 and 11:00, and the limit is 11:00 instead.
+There's no countdown to 9:00: a short set can always take another story.
+Near either limit the feedback is the same, so it's consistent: the bar turns yellow 30 seconds before with "Start wrapping up.", then red with "Finish your story now." once past it.
 "Finish" is disabled for the first second, so a double tap on Start can't end the recording.
 - **When a story runs long** (slides 15 and 16): over 5:00, or too long for its set, the app shows the time left in the set and offers **Edit to fit** (recommended, keeps everything said) or **Record it again** (keeps the name recording).
 - **A simple editor, not a Voice Memos copy**: the doc points to the iPhone Voice Memos editor, but families only need to get under a limit.

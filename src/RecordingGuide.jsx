@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { CloseIcon } from './icons.jsx';
+import { STORY_MAX_WORDS } from './stories.js';
 
 // The guide opens by itself the first time someone records on this device, and after that from the
-// info button on the record screen. Storage can be unavailable (private browsing): then it opens each time.
+// Instructions button on the record screen. Storage can be unavailable (private browsing): then it opens each time.
 const SEEN_KEY = 'fastapp.recordingGuideSeen';
 export function seenRecordingGuide() {
   try {
@@ -50,7 +51,7 @@ export default function RecordingGuide({ affect, set, startStep = 0, onClose }) 
     },
     {
       title: 'Tell your story',
-      body: <><p>Tap <strong>Start recording</strong> again and tell your story. You can pause and resume.</p><div className="guide-callout"><strong>Up to 5:00</strong><span>This includes the name. If the set has less room, your story needs to fit within that time.</span></div><p>When you are finished, tap <strong>Finish story</strong>.</p></>,
+      body: <><p>Tap <strong>Start recording</strong> again and tell your story. You can pause and resume.</p><div className="guide-callout"><strong>Up to {STORY_MAX_WORDS}</strong><span>This includes the name. If the set has less room, your story needs to fit within that time.</span></div><p>When you are finished, tap <strong>Finish story</strong>.</p></>,
     },
     {
       title: 'Listen and add your story',
