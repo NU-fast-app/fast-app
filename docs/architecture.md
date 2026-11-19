@@ -91,8 +91,8 @@ Editing a saved story's audio (`replaceStoryAudio()`) writes a new story and del
 The edited story gets a new id and a new `createdAt`, so it moves to the end of its set's list.
 - **Durations are measured, not read from the file.** Some browsers (Chrome's WebM) write recordings without a readable length, so `useRecorder` times the recording itself and the durations are stored in milliseconds as integers.
 Never take a length from an `<audio>` element.
-- **Sessions are saved once, then only marked as ended.** Each play of a set is a document in `groups/{groupId}/sessions`, written by the member who played it, with the checklist answers checked against fixed lists.
-The only update the rules allow is its player adding `endedAt` (server time) once, and nobody can delete one, so the history of what was played can't be rewritten.
+- **Sessions are saved once, then only marked as ended and answered.** Each play of a set is a document in `groups/{groupId}/sessions`, written by the member who played it, with the checklist answers checked against fixed lists.
+The only updates the rules allow are its player adding `endedAt` (server time) once, then `after` (the answers to the questions after it) once, and nobody can delete one, so the history of what was played can't be rewritten.
 A group's `hearingAid` can be added once by any member and never changed.
 - **The limits live in two places.** `src/stories.js` (`STORY_MAX`, `NAME_MAX`, `SET_MIN`, `SET_MAX`) and `firestore.rules` (the 5:00 and 1:00 limits, 5 chunks, 5 MB).
 Change both together.
@@ -143,13 +143,16 @@ The screen shows loading and retry states if the records are unavailable.
 
 ## Playing to the patient (`src/PlaySession.jsx`, `src/playing.js`, `src/sessions.js`)
 
-- `PlaySession` is a small state machine over `step`, in the order of slide 26: `awake` (signs of being awake) → `prepare` (the sound check and checklist) → `playing` → `done`.
+- `PlaySession` is a small state machine over `step`, in the order of slides 26 and 27: `awake` (signs of being awake) → `prepare` (the sound check and checklist) → `playing` → `done` (take the earbuds out) → `after` (the questions after the session).
 - When it opens, it loads today's sessions (`listSessionsOn()`, by `day`), picks one of the sets with stories not yet played today at random (`playableSets()` and `pickSet()`), shuffles its stories (`shuffled()`), and starts loading their audio, so it's ready by the time the checklist is done.
 - `day` is the date on the playing device's calendar (`localDay()`), so a set isn't repeated on the same day.
 - The session is saved the first time Play is tapped (`ClipPlayer`'s `onPlay`), with the checklist keys (`PREPARE`) and the signs of being awake (`AWAKE`).
 Canceling before that saves nothing. If saving fails, the set keeps playing and an error says so.
 - When the last story finishes (`ClipPlayer`'s `onEnd`), the session gets `endedAt` (`markSessionEnded()`), so a set stopped partway has none.
 Dragging the progress bar to the end counts as finishing too.
+- `after` asks about each behavior in `AFTER` (the 7 in `AWAKE`, plus 2) with the answers in `CHANGES`, then whether the patient became agitated.
+**Done** saves them on the session as `after` (`saveAfter()`), which the rules allow only once the session has `endedAt`; if marking it ended failed earlier, saving the answers tries that again first.
+If the session itself was never saved, the screen says the answers can't be saved either, and Done just leaves.
 - The sound check is a chime made in the browser (`chimeWav()` in `src/chime.js`): four rising bell notes, about 3 seconds, normalized to about a voice recording's loudness, so the volume set with it suits the stories.
 - The hearing aid question shows until a care team has answered it, then the checklist adds "hearing aid in place" for a patient who uses one.
 The eligibility survey is meant to ask it, once it's built.

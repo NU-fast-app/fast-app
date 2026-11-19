@@ -7,12 +7,14 @@ import { isValidGroupId } from './group.js';
 // Each time a set is played to the patient, it's saved as a session under the care team:
 //
 //   groups/{groupId}/sessions/{id}   playedBy, affect, setNumber, day, startedAt, prepared, awake,
-//                                    and endedAt once the set has played to the end
+//                                    endedAt once the set has played to the end,
+//                                    and after once the questions after it are answered
 //
 // `day` is the date it counts toward ("YYYY-MM-DD", from localDay()), so a set isn't played
 // twice in one day. `prepared` lists the checklist items ticked (PREPARE in playing.js) and
 // `awake` the signs of being awake (AWAKE). A session is saved when the set starts playing; the only
-// change after that is adding `endedAt` when it plays to the end, so a set stopped partway has none.
+// changes after that are adding `endedAt` when it plays to the end, so a set stopped partway has
+// none, and then `after`: { changes: { AFTER key: "more", "same" or "less" }, agitated: true or false }.
 
 const sessionsRef = (groupId) => collection(db, 'groups', groupId, 'sessions');
 
@@ -50,4 +52,10 @@ export async function saveSession(groupId, { affect, setNumber, day, prepared, a
 // Mark a session as played to the end, now.
 export function markSessionEnded(groupId, sessionId) {
   return updateDoc(doc(sessionsRef(groupId), sessionId), { endedAt: serverTimestamp() });
+}
+
+// Save the answers to the questions after a session, once it has been marked as ended.
+// `changes` has a CHANGES key ("more", "same" or "less") for every AFTER key in playing.js.
+export function saveAfter(groupId, sessionId, { changes, agitated }) {
+  return updateDoc(doc(sessionsRef(groupId), sessionId), { after: { changes, agitated } });
 }

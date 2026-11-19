@@ -7,7 +7,9 @@ import { CheckIcon } from './icons.jsx';
 import {
   AFTER, AWAKE, CHANGES, localDay, pickSet, playableSets, prepareItems, shuffled,
 } from './playing.js';
-import { listSessionsOn, markSessionEnded, saveSession } from './sessions.js';
+import {
+  listSessionsOn, markSessionEnded, saveAfter, saveSession,
+} from './sessions.js';
 import { loadStoryAudio, splitClips } from './storage.js';
 import { setKey, setName, storiesInSet } from './stories.js';
 
@@ -18,7 +20,8 @@ import { setKey, setName, storiesInSet } from './stories.js';
 //   3. The set plays: one picked at random from the sets not yet played today, its stories shuffled.
 //   4. Once it has played to the end: take the earbuds out, then "How is Sam now?", the questions
 //      after a session (AFTER, and whether the patient became agitated).
-// The session is saved when the set starts playing, and marked as ended if it plays to the end.
+// The session is saved when the set starts playing, marked as ended if it plays to the end, and
+// given the answers to the questions after it (see sessions.js).
 // `group` is the current care team; `onHearingAid(answer)` updates it once the hearing aid question
 // is answered. `onDone(message)` and `onCancel()` leave the screen.
 export default function PlaySession({ group, stories, onHearingAid, onDone, onCancel }) {
@@ -35,6 +38,7 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const saved = useRef(null); // the session being saved: a promise of its id
+  const ended = useRef(null); // marking it as played to the end: a promise
 
   // Pick today's set and start loading its audio, so it's ready by the time the checklist is done.
   useEffect(() => {
@@ -120,19 +124,44 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
     });
   }
 
+  // Record on the saved session that the set played to the end. If that fails, saving the answers
+  // after the session tries again, since they can only be added to an ended session.
+  function markEnded() {
+    ended.current = saved.current.then((id) => markSessionEnded(group.id, id));
+    ended.current.catch(() => {
+      ended.current = null;
+    });
+    return ended.current;
+  }
+
   // The set played to the end: say so, and record it on the session once it's saved.
   function finish() {
     setStep('done');
-    saved.current?.then((id) => markSessionEnded(group.id, id)).catch((err) => {
+    if (!saved.current) return; // the session couldn't be saved, and the error already says so
+    markEnded().catch((err) => {
       setError(`Could not record that the set finished: ${err.message}`);
     });
   }
 
-  // The questions after the session are answered: leave.
-  function finishAfter() {
+  // Save the answers to the questions after the session, then leave.
+  async function finishAfter() {
     if (!answered) return;
+    setError('');
+    setSaving(true);
+    try {
+      const id = await saved.current;
+      await (ended.current ?? markEnded());
+      await saveAfter(group.id, id, { changes, agitated });
+    } catch (err) {
+      setError(`Could not save your answers: ${err.message}`);
+      setSaving(false);
+      return;
+    }
     onDone(`Played ${set} to ${name}.`);
   }
+
+  // Without a saved session, there's nowhere to save the answers.
+  const unsaved = step === 'after' && !saved.current;
 
   const errorMessage = error && <p className="error" role="alert">{error}</p>;
   const stepNumber = { awake: 1, prepare: 2, playing: 3, done: 4, after: 4 }[step];
@@ -273,6 +302,7 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
               <button
                 className="pill pill-primary"
                 onClick={() => {
+                  setError(''); // saving the answers retries anything that failed
                   setStep('after');
                   window.scrollTo(0, 0);
                 }}
@@ -309,10 +339,21 @@ export default function PlaySession({ group, stories, onHearingAid, onDone, onCa
                 Consider stopping the sessions for now, and check again each week whether {name} becomes agitated.
               </p>
             )}
+            {unsaved && (
+              <p className="error" role="alert">This session couldn&apos;t be saved, so these answers can&apos;t be saved either.</p>
+            )}
             {errorMessage}
             <div className="actions">
-              <button className="pill pill-primary" onClick={finishAfter} disabled={!answered}>Done</button>
-              {!answered && <p className="footnote">Answer every question to finish.</p>}
+              {unsaved ? (
+                <button className="pill pill-primary" onClick={() => onDone(`Played ${set} to ${name}.`)}>Done</button>
+              ) : (
+                <>
+                  <button className="pill pill-primary" onClick={finishAfter} disabled={!answered || saving}>
+                    {saving ? 'Saving...' : 'Done'}
+                  </button>
+                  {!answered && <p className="footnote">Answer every question to finish.</p>}
+                </>
+              )}
             </div>
           </>
         )}

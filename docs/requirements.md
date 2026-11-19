@@ -124,7 +124,8 @@ If an edit makes a set too long, go to its list of stories to pick one to edit; 
 Built: the Play button, the pre-session checklist, picking a random set not yet played today with its stories shuffled, playing it with the time left, and saving each session (who played it, when, which set, and the checklist answers).
 While the app is being tested, any set with stories can be played; the gate on approval comes later.
 The hearing aid question is asked the first time a care team plays, until the eligibility survey asks it.
-Not built: the post-session checklist, play instructions, progress on Home, the 2-hour warning and reminders.
+Also built: progress on Home, and the post-session checklist, with its answers saved on each session.
+Not built: play instructions, the 2-hour warning and reminders, and showing the post-session answers anywhere.
 
 Scenario (slide 22):
 - Playing unlocks once all 4 sets are complete and approved.
@@ -170,4 +171,5 @@ Slide 2 lists "Complete post treatment survey" and "Review data" (researcher) as
 The app uses 9:00 to 11:00 for all 4 sets (`SET_MIN` and `SET_MAX` in `src/stories.js`).
 - **Survey question 2 branches** look inverted (see above).
 - **Post-treatment survey** and **researcher data review** have no details yet.
+- **Where to see the post-session answers.** They're saved on each session; who should see them (caregivers, clinicians or researchers), and where?
 - **Platform.** The doc asks for iOS and Android; the prototype is a web app that works in phone browsers.
