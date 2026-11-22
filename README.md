@@ -74,6 +74,31 @@ Run `npx firebase login` once first.
 `npm run dev` and `npm run dev:mobile` use the live project instead.
 The live project still runs the version from before sign-in, so use `npm run dev:local` or the dev project until it's moved over.
 
+## CI and deploys
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`:
+
+1. **Check**: `npm run lint`, `npm run build`, `npm run test:unit`, `npm run test:rules` and `npm audit --omit=dev --audit-level=high`.
+Any failure fails the run; lint warnings don't.
+2. **Preview** (pull requests): once the checks pass, the branch is deployed to a 7-day preview address on the dev project, and a bot comments the address on the pull request.
+Like `npm run deploy:branch`, it shares the dev project's database and deployed rules.
+3. **Deploy dev** (pushes to `main`, which includes merging a pull request): once the checks pass, `npm run deploy:dev` deploys the site, `firestore.rules` and `firestore.indexes.json` to https://fast-app-cs499-dev.web.app.
+Deploys run one at a time, in order.
+
+The live project is never deployed from CI.
+Dependabot (`.github/dependabot.yml`) opens pull requests for dependency and GitHub Actions updates every Monday; merge them once their checks pass.
+
+### One-time setup (a repository admin)
+
+The deploy steps need a Google service account that can deploy to the dev project, stored as a repository secret.
+Until it's added, the checks still run and the deploys are skipped, with a notice on the run.
+
+1. Run `npx firebase init hosting:github` and choose `NU-fast-app/fast-app` and the `fast-app-cs499-dev` project.
+It creates a service account that can deploy hosting and saves it as the `FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV` secret.
+When it offers to write workflow files, answer No: `ci.yml` already does that.
+2. In the Google Cloud console for `fast-app-cs499-dev` (IAM and admin, IAM), give that service account (`github-action-...@fast-app-cs499-dev.iam.gserviceaccount.com`) two more roles, so `deploy-dev` can deploy rules and indexes: **Firebase Rules Admin** and **Cloud Datastore Index Admin**.
+3. In the repository's settings, under Branches, add a rule for `main` that requires the **check** status check to pass before merging.
+
 ## Use your own Firebase project
 
 To run a fork on your own Firebase project:
