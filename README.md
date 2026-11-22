@@ -86,18 +86,29 @@ Like `npm run deploy:branch`, it shares the dev project's database and deployed 
 Deploys run one at a time, in order.
 
 The live project is never deployed from CI.
-Dependabot (`.github/dependabot.yml`) opens pull requests for dependency and GitHub Actions updates every Monday; merge them once their checks pass.
+Dependabot (`.github/dependabot.yml`) opens pull requests for dependency and GitHub Actions updates every Monday; review and merge them like any other pull request.
 
-### One-time setup (a repository admin)
+### Before merging a pull request
 
-The deploy steps need a Google service account that can deploy to the dev project, stored as a repository secret.
-Until it's added, the checks still run and the deploys are skipped, with a notice on the run.
+`main` isn't protected: GitHub lets anyone with write access merge a pull request even if its checks failed, or push to `main` directly.
+Every change that reaches `main` is deployed to the dev site, its rules and its indexes automatically, so check each pull request before merging it:
 
-1. Run `npx firebase init hosting:github` and choose `NU-fast-app/fast-app` and the `fast-app-cs499-dev` project.
-It creates a service account that can deploy hosting and saves it as the `FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV` secret.
-When it offers to write workflow files, answer No: `ci.yml` already does that.
-2. In the Google Cloud console for `fast-app-cs499-dev` (IAM and admin, IAM), give that service account (`github-action-...@fast-app-cs499-dev.iam.gserviceaccount.com`) two more roles, so `deploy-dev` can deploy rules and indexes: **Firebase Rules Admin** and **Cloud Datastore Index Admin**.
-3. In the repository's settings, under Branches, add a rule for `main` that requires the **check** status check to pass before merging.
+- The **check** job passed (a green check on the pull request).
+- You tried the preview address the bot commented, especially for anything a person sees or does.
+- The changes are what the pull request says, and a rules change has tests.
+
+### Setup (already done)
+
+The deploy steps use a Google service account that can deploy to the dev project, stored as the repository secret `FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV`.
+Without the secret (as on Dependabot's and forks' pull requests), the checks still run and the deploys are skipped, with a notice on the run.
+This is how it was set up, in case it has to be done again:
+
+1. In a terminal (it asks questions, so not from a tool that can't answer them), run `npx firebase init hosting:github --project fast-app-cs499-dev`.
+Without `--project` it uses the default project, which is the live one.
+Choose the `NU-fast-app/fast-app` repository, and answer No to every question after that.
+It creates a service account (`github-action-...@fast-app-cs499-dev.iam.gserviceaccount.com`) and saves the secret.
+2. Undo what it changes in the folder: delete the `.github/workflows/firebase-hosting-*.yml` files it writes (`ci.yml` already does their job), and run `git checkout .firebaserc`, which it switches to the dev project.
+3. Give the service account two more roles on `fast-app-cs499-dev`, so `deploy-dev` can deploy rules and indexes: **Firebase Rules Admin** and **Cloud Datastore Index Admin** (Google Cloud console, IAM and admin, IAM; or `gcloud projects add-iam-policy-binding`).
 
 ## Use your own Firebase project
 

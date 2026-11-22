@@ -129,6 +129,7 @@ Check changes by running the app with `npm run dev:local` and using it.
 ### Deploy
 
 CI (`.github/workflows/ci.yml`) deploys every push to `main` to the dev project after the checks pass, and gives each pull request a preview address; see "CI and deploys" in `README.md`.
+`main` isn't protected, so check a pull request (its checks, its preview and its changes) before merging it: merging deploys it.
 Never deploy the live project from CI.
 
 Only people added to the Firebase project can deploy.
