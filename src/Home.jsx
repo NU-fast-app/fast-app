@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { localDay } from './playing.js';
-import { playbackProgress, SESSION_GOAL } from './playbackProgress.js';
+import { completedDaysPercent, COMPLETED_DAYS_GOAL, playbackProgress, SESSION_GOAL } from './playbackProgress.js';
 import { listSessions } from './sessions.js';
 import NavBar from './NavBar.jsx';
 import { SetGroups } from './StorySets.jsx';
@@ -92,8 +92,11 @@ export default function Home({
                 <div className="playback-ring">
                   <svg viewBox="0 0 120 120" aria-hidden="true">
                     <circle className="ring-track" cx="60" cy="60" r="54" />
+                    {progressState.progress.completedDays > 0 && (
+                      <circle className="ring-fill" cx="60" cy="60" r="54" pathLength="100" strokeDasharray={`${completedDaysPercent(progressState.progress.completedDays)} 100`} />
+                    )}
                   </svg>
-                  <div><strong>{progressState.progress.completedDays} {progressState.progress.completedDays === 1 ? 'day' : 'days'}</strong><span>all 4 sets played</span></div>
+                  <div><strong>{progressState.progress.completedDays} of {COMPLETED_DAYS_GOAL}</strong><span>days</span></div>
                 </div>
                 <span>Completed days</span>
               </div>

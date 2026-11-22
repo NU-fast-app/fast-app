@@ -1,6 +1,11 @@
 import { SETS, setKey } from './stories.js';
 
 export const SESSION_GOAL = 168;
+export const COMPLETED_DAYS_GOAL = 42;
+
+export function completedDaysPercent(days) {
+  return Math.min(days / COMPLETED_DAYS_GOAL, 1) * 100;
+}
 
 // Count completed sessions, and distinct sets for each session's recorded local day.
 export function playbackProgress(sessions, today) {

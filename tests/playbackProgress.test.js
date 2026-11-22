@@ -1,6 +1,6 @@
 import { test } from 'node:test';
-import { deepStrictEqual } from 'node:assert';
-import { playbackProgress } from '../src/playbackProgress.js';
+import { deepStrictEqual, strictEqual } from 'node:assert';
+import { completedDaysPercent, playbackProgress } from '../src/playbackProgress.js';
 
 const day = '2026-11-15';
 const sets = [
@@ -23,4 +23,12 @@ test('duplicates count toward total but not distinct sets or completed days', ()
 test('counts multiple completed days across members and separates today', () => {
   const sessions = [...completed('2026-11-13'), ...completed('2026-11-14'), { ...sets[1], day, endedAt: 1, playedBy: 'another' }];
   deepStrictEqual(playbackProgress(sessions, day), { today: 1, total: 9, completedDays: 2 });
+});
+
+test('completed days progress reaches the goal and caps the ring at 100%', () => {
+  for (const [days, percent] of [[0, 0], [21, 50], [42, 100], [50, 100]]) {
+    strictEqual(completedDaysPercent(days), percent);
+    const sessions = Array.from({ length: days }, (_, i) => completed(`day-${i}`)).flat();
+    strictEqual(playbackProgress(sessions, day).completedDays, days);
+  }
 });
