@@ -13,7 +13,7 @@ import { SETS } from './stories.js';
 // `summary` is null while the stories load. `onRecord`, `onRecordInSet` and `onPlay` are null when
 // the person's access level doesn't include them.
 export default function Home({
-  groupId, groupName, canSwitch, onSwitch, notice, summary, menuButton, onRecord, onRecordInSet, onListen, onPlay,
+  groupId, groupName, canSwitch, onSwitch, notice, summary, menuButton, onRecord, onRecordInSet, onListen, onPlay, onSetup,
 }) {
   const [progressState, setProgressState] = useState({ loading: true });
   const [attempt, setAttempt] = useState(0);
@@ -49,6 +49,11 @@ export default function Home({
           </p>
         </div>
         {notice && <p className="notice" role="status">{notice}</p>}
+        {onSetup && <section className="card setup-alert" aria-labelledby="setup-heading">
+          <h2 id="setup-heading">Complete your care team setup</h2>
+          <p>Tell us about your role and whether a clinician will be involved in your loved one&apos;s care.</p>
+          <button className="pill pill-primary" onClick={onSetup}>Continue setup</button>
+        </section>}
 
         <section className="card playback-progress" aria-labelledby="playback-heading">
           <h2 id="playback-heading">Playback progress</h2>

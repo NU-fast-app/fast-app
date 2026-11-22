@@ -1,5 +1,5 @@
 import {
-  collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, writeBatch,
+  collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where, writeBatch,
 } from 'firebase/firestore/lite';
 import { DEFAULT_ACCESS } from './access.js';
 import { displayName } from './auth.js';
@@ -50,6 +50,8 @@ export async function listMyGroups(uid) {
       id: d.id,
       name: d.data().name,
       ownerId: d.data().ownerId,
+      ownerRole: d.data().ownerRole,
+      clinicianParticipation: d.data().clinicianParticipation,
       hearingAid: d.data().hearingAid,
       access: d.data().ownerId === uid ? 'lead' : memberships[i].data().access ?? DEFAULT_ACCESS,
     })
@@ -65,19 +67,24 @@ export function setHearingAid(groupId, hearingAid) {
 
 // Start a group with the signed-in person as its owner and first member, in one batch.
 // Returns the new group's ID.
-export async function createGroup(user, patientName) {
+export async function createGroup(user, patientName, ownerRole) {
   const id = newGroupId();
   const batch = writeBatch(db);
   batch.set(groupRef(id), {
     id,
     name: patientName.trim(),
     ownerId: user.uid,
+    ...(ownerRole ? { ownerRole, clinicianParticipation: null } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
   batch.set(doc(membersRef(id), user.uid), memberFor(user, 'administrator'));
   await batch.commit();
   return id;
+}
+
+export function setOwnerSetup(groupId, ownerRole, clinicianParticipation) {
+  return updateDoc(groupRef(groupId), { ownerRole, clinicianParticipation });
 }
 
 function memberFor(user, access) {
@@ -102,9 +109,10 @@ export async function listInvites(groupId) {
 
 // Invite an email address to the group with an access level. Returns the invite's ID, which is the
 // secret part of its link.
-export async function createInvite(group, user, email, access) {
+export async function createInvite(group, user, email, access, completeSetup = false) {
   const inviteRef = doc(invitesRef(group.id));
-  await setDoc(inviteRef, {
+  const batch = writeBatch(db);
+  batch.set(inviteRef, {
     email: normalizeEmail(email),
     groupName: group.name,
     invitedBy: user.uid,
@@ -112,6 +120,8 @@ export async function createInvite(group, user, email, access) {
     access,
     createdAt: serverTimestamp(),
   });
+  if (completeSetup) batch.update(groupRef(group.id), { ownerRole: 'caregiver', clinicianParticipation: 'yes' });
+  await batch.commit();
   return inviteRef.id;
 }
 

@@ -12,6 +12,9 @@ Family members record personal stories for a loved one with a disorder of consci
 
 - Sign in with Google, or with an email address and a password (with password reset and email confirmation).
 - Start a care team for a patient, invite family and friends with a link, and switch between care teams.
+  The team owner selects their relationship to the patient and, if they are a caregiver, whether a clinician will participate. When they invite a clinician, the app creates a link to share; it does not send email automatically. Existing team owners are prompted to complete missing setup.
+  `groups/{groupId}` stores `ownerRole` (`caregiver` or `clinician`) and `clinicianParticipation` (`yes`, `no`, or `null` while unanswered/not applicable); these do not change member access. Older groups may lack both fields.
+  For a new team, the name and setup answers are entered before the team is created. The team is created on Finish setup, or on Complete immediately before creating a clinician invite. If that invite fails, retrying uses the same team; after leaving, its owner can resume from Home.
 The lead caregiver who started the team and administrators can invite and remove people.
 Members can record and edit stories or play sets according to their access level.
 Players cannot open Listen, but the database allows them to read the story audio used for set playback.

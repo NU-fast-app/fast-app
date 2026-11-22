@@ -303,6 +303,37 @@ button:disabled {
   box-shadow: var(--shadow);
 }
 
+.setup-alert {
+  background-color: var(--danger-soft);
+  gap: 0.225rem;
+}
+
+.setup-step:not([hidden]) {
+  display: contents;
+}
+
+.setup-alert h2, .setup-alert p {
+  margin: 0;
+}
+
+.setup-alert .pill {
+  margin-top: 0.75rem;
+}
+
+.setup-form .checklist legend {
+  margin-bottom: 0.75rem;
+}
+
+.setup-form .setup-question {
+  margin-top: 0.75rem;
+}
+
+.setup-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .card-text {
   margin: 0;
   line-height: 1.45;
