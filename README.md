@@ -49,6 +49,7 @@ The demo accounts all use the password `password`:
 Emails (confirming an address, resetting a password) aren't sent: the links appear in the Auth tab of the Emulator UI.
 
 `npm run test:rules` runs the security rules tests in `tests/` against the Firestore emulator.
+`npm run test:unit` runs the other tests, `npm run lint` checks the code with ESLint, and `npm run build` catches compile errors.
 
 ## Test a branch online
 
@@ -90,6 +91,17 @@ npx firebase deploy --only firestore,hosting --project your-project-id
 ```
 
 The free Spark plan is enough.
+
+## Dependency notes
+
+**The `@grpc/grpc-js` override.**
+`package.json` has an `overrides` entry that forces `@grpc/grpc-js` to 1.14 or newer.
+It's there because Firebase, even 13.4.0, depends on `@grpc/grpc-js` 1.9, which `npm audit` reports as a high-severity vulnerability (fixed in 1.13.6).
+gRPC only runs in Firebase's Node build, which the seed script and the rules tests use; the app in the browser talks to Firestore over HTTPS and never loads it.
+The seed and all rules tests pass with the newer version.
+
+Remove the override once a Firebase release depends on `@grpc/grpc-js` 1.13.6 or newer (check with `npm view @firebase/firestore dependencies`): delete it, run `npm install`, and make sure `npm audit --omit=dev` still finds nothing.
+If the seed or the rules tests ever fail with gRPC errors after a Firebase update, suspect this override first.
 
 ## Built with
 

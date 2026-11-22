@@ -40,7 +40,7 @@ export default function JoinGroup({ user, groupId, inviteId, onJoined, onDismiss
     try {
       await acceptInvite(invite, groupId, user);
     } catch (err) {
-      throw new Error(`Could not join the care team (${err.code ?? err.message}). Please try again.`);
+      throw new Error(`Could not join the care team (${err.code ?? err.message}). Please try again.`, { cause: err });
     }
     await onJoined(groupId);
   });
