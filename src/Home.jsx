@@ -109,13 +109,15 @@ export default function Home({
               Record a story
             </button>
           )}
-          <button className={`pill ${onRecord ? 'pill-white' : 'pill-primary'}`} onClick={onListen}>
-            <HeadphonesIcon />
-            {onRecord ? 'Listen and Edit Stories' : 'Listen to Stories'}
-          </button>
+          {onListen && (
+            <button className={`pill ${onRecord ? 'pill-white' : 'pill-primary'}`} onClick={onListen}>
+              <HeadphonesIcon />
+              Listen and Edit Stories
+            </button>
+          )}
           {onPlay && (
             <>
-              <button className="pill pill-white" onClick={onPlay}>
+              <button className={`pill ${onRecord || onListen ? 'pill-white' : 'pill-primary'}`} onClick={onPlay}>
                 <PlayOutlineIcon />
                 Play Stories
               </button>

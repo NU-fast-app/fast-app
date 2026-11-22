@@ -12,7 +12,9 @@ Family members record personal stories for a loved one with a disorder of consci
 
 - Sign in with Google, or with an email address and a password (with password reset and email confirmation).
 - Start a care team for a patient, invite family and friends with a link, and switch between care teams.
-The lead caregiver who started the team invites and removes people; everyone else can record, listen, edit and leave.
+The lead caregiver who started the team and administrators can invite and remove people.
+Members can record and edit stories or play sets according to their access level.
+Players cannot open Listen, but the database allows them to read the story audio used for set playback.
 Only a care team's members can see or change its stories, which the database's security rules enforce.
 - Record a story in 3 steps: the patient's name said 3 times, the story (up to 5:00, counting the name), then its details.
 - Track each set toward its 9:00 to 11:00 target.
@@ -20,7 +22,7 @@ Only a care team's members can see or change its stories, which the database's s
 - Listen to whole sets or single stories, seek within them, and move or swap stories between sets, even from happy to challenging.
 - Works on phones and on computers (with a sidebar layout at 960 px and wider), in light and dark mode.
 
-Separate access levels (administrator, clinician, storyteller, player), the eligibility survey, clinician approval and playing sessions to the patient are not built yet.
+The eligibility survey and clinician approval are not built yet.
 
 ## Run it
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CareTeam, { InviteSomeone } from './CareTeam.jsx';
 import YourCareTeams, { StartCareTeam } from './CareTeams.jsx';
-import { canManage, canPlay, canRecord } from './access.js';
+import { canListen, canManage, canPlay, canRecord } from './access.js';
 import EditStory from './EditStory.jsx';
 import Home from './Home.jsx';
 import JoinGroup from './JoinGroup.jsx';
@@ -83,13 +83,13 @@ function firstScreen() {
 const MENU = [
   { label: 'Home', screen: HOME, icon: <HomeIcon /> },
   { label: 'Record a Story', screen: SETS_SCREEN, icon: <MicIcon />, allowed: canRecord },
-  { label: 'Listen and Edit Stories', readOnlyLabel: 'Listen to Stories', sidebarLabel: 'Listen', screen: STORIES_SCREEN, icon: <HeadphonesIcon /> },
+  { label: 'Listen and Edit Stories', sidebarLabel: 'Listen', screen: STORIES_SCREEN, icon: <HeadphonesIcon />, allowed: canListen },
   { label: 'Play Stories', sidebarLabel: 'Play', screen: PLAY_SCREEN, icon: <PlayOutlineIcon />, allowed: canPlay },
   { label: 'Care team', screen: TEAM_SCREEN, icon: <PeopleIcon /> },
 ];
 
 // The screens each access level needs, beyond the ones everyone has.
-const NEEDS = { sets: canRecord, record: canRecord, edit: canRecord, play: canPlay, invite: canManage };
+const NEEDS = { sets: canRecord, record: canRecord, stories: canListen, edit: canRecord, play: canPlay, invite: canManage };
 
 // The menu item each screen belongs to: recording starts from the sets, editing from Listen,
 // and inviting, switching and starting care teams from Care team.
@@ -457,7 +457,7 @@ function CareApp({ user }) {
         menuButton={menuButton}
         onRecord={canRecord(access) ? () => goTo(SETS_SCREEN) : null}
         onRecordInSet={canRecord(access) ? recordInSet : null}
-        onListen={() => goTo(STORIES_SCREEN)}
+        onListen={canListen(access) ? () => goTo(STORIES_SCREEN) : null}
         onPlay={canPlay(access) ? () => goTo(PLAY_SCREEN) : null}
       />
     );
@@ -551,7 +551,7 @@ function CareApp({ user }) {
                 className={item.screen.name === section ? 'current' : ''}
                 onClick={() => goTo(item.screen)}
               >
-                {!canRecord(access) && item.readOnlyLabel ? item.readOnlyLabel : item.label}
+                {item.label}
               </button>
             ))}
             <hr />

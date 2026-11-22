@@ -157,8 +157,8 @@ Everyone else is a **member** with one of the 4 access levels from slide 4 (`src
   - **Administrator**: invite and remove people and change their access, record and edit stories, and play them.
   - **Clinician**: record and edit stories, and play them (the clinician's review and approval aren't built yet).
   - **Record and edit stories**: record, listen to, edit and move stories.
-  - **Play stories**: play story sets, and listen to the stories (Listen is read-only for them).
-Everyone can listen to the stories, and the lead caregiver can do everything.
+  - **Play stories**: play story sets
+The lead caregiver can do everything.
 Members who joined before access levels count as Record and edit stories.
 The app hides what someone's level doesn't include, and the rules enforce it.
 - **Care team screen**: the lead caregiver, the family and friends with each person's access level, and (for the lead caregiver and administrators) invites not yet accepted.
@@ -171,7 +171,7 @@ The current one is in the URL as `?group=<groupId>`; without it the app opens th
 - **Home**: whose care team it is, then playback progress (the client asked to remove the "N of 4 sets ready" card).
 Playback progress shows today's distinct completed sets, total completed sessions toward 168, and days with all four sets completed, across the care team.
 Set totals and the Listen screen include only the current care team's stories.
-On a phone, **Menu** (top right) shows your account and opens Home, Record a Story, Listen and Edit Stories, Play Stories, Care team, Your care teams and Sign out.
+On a phone, **Menu** (top right) shows your account and the screens your access level allows, plus Your care teams and Sign out.
 - **Record a story**: pick a set; each shows its stories, total and time left to go, with a bar from 0:00 to 11:00 and the 9:00 to 11:00 target shaded.
 A set in range shows "Ready" and can't take more stories.
 - **Recording a story**, in 3 steps (shown under the set's name at the top).
