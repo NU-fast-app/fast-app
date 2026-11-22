@@ -41,6 +41,10 @@ function member(person, extra = {}) {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
 }
 
+const invite = (fields = {}) => ({
+  email: 'rosa@example.com', groupName: 'Sam Smith', invitedBy: 'ann', invitedByName: 'Ann', access: 'stories', createdAt: serverTimestamp(), ...fields,
+});
+
 beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (context) => {
@@ -166,10 +170,6 @@ describe('reading groups and members', () => {
 });
 
 describe('invites', () => {
-  const invite = (fields = {}) => ({
-    email: 'rosa@example.com', groupName: 'Sam Smith', invitedBy: 'ann', invitedByName: 'Ann', access: 'stories', createdAt: serverTimestamp(), ...fields,
-  });
-
   test('the owner invites', () => assertSucceeds(setDoc(doc(as(ANN), 'groups/sam/invites/new'), invite())));
   test('members cannot', () => assertFails(setDoc(doc(as(JEFF), 'groups/sam/invites/new'), invite({ invitedBy: 'jeff' }))));
   test('administrators invite, list and cancel invites', async () => {
