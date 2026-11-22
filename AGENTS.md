@@ -31,7 +31,7 @@ For more depth, read the doc that fits the task:
 2. Run `npm install`, then `npm run dev:local` to work against a local emulator with sample stories.
 3. Make the change in the style of the code around it.
 4. Check it in the browser at phone width and at 1280 px, in light and dark mode (see [Testing](docs/architecture.md#testing)).
-5. Run `npm run build` to be sure it builds.
+5. Run `npm run lint` and `npm run build` to be sure it's clean and builds.
 6. Update the docs the change affects: this file, `docs/`, `README.md`, and the comment at the top of `firestore.rules` if the data model changed.
 7. Stop any dev server you started.
 Deploy only when asked, following the safety rules below.
@@ -106,8 +106,9 @@ npm run dev:remote   # http://localhost:5173, against the dev Firebase project
 npm run build        # production build into dist/, for the live project
 npm run deploy:dev   # build for the dev project and deploy it to https://fast-app-cs499-dev.web.app
 npm run deploy:branch # build for the dev project and deploy it to a 7-day preview address named after the branch
-npm run test:unit    # the story editor's plan, recording set progress and picking what to play
+npm run test:unit    # the story editor's plan, recording set progress, choosing a set and picking what to play
 npm run test:rules   # the security rules tests (tests/rules.test.js), against the Firestore emulator
+npm run lint         # ESLint (eslint.config.js): errors fail, effect-dependency warnings don't
 ```
 
 `npm run dev:local` starts the Firestore and Auth emulators (project `demo-fast-app`, with the real `firestore.rules`), runs `scripts/seed.js`, then starts Vite in `emulator` mode.
@@ -119,10 +120,17 @@ The seed writes through the security rules, the way the app does, so a data mode
 Phones only allow the microphone over HTTPS.
 `npm run dev:mobile` prints a `Network: https://...` address for a phone on the same Wi-Fi; its certificate is self-signed, so tap through the warning the first time.
 
-The security rules have tests (`npm run test:rules`), as do the story editor's plan, recording set progress and picking what to play (`npm run test:unit`); there is no linter yet.
+The security rules have tests (`npm run test:rules`), as do the story editor's plan, recording set progress and picking what to play (`npm run test:unit`).
+`npm run lint` runs ESLint's recommended rules and the classic React hooks rules.
+It allows warnings (the `react-hooks/exhaustive-deps` ones are mostly deliberate), but fix any error.
+`package.json` overrides `@grpc/grpc-js`; see [Dependency notes](README.md#dependency-notes) before changing Firebase versions.
 Check changes by running the app with `npm run dev:local` and using it.
 
 ### Deploy
+
+CI (`.github/workflows/ci.yml`) deploys every push to `main` to the dev project after the checks pass, and gives each pull request a preview address; see "CI and deploys" in `README.md`.
+`main` isn't protected, so check a pull request (its checks, its preview and its changes) before merging it: merging deploys it.
+Never deploy the live project from CI.
 
 Only people added to the Firebase project can deploy.
 The Firebase CLI is a dev dependency, so `npx firebase` uses the version in `package-lock.json`.
