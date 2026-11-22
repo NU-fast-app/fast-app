@@ -304,8 +304,12 @@ button:disabled {
 }
 
 .setup-alert {
-  background-color: var(--danger-soft);
+  background-color: #fff1e8;
   gap: 0.225rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .setup-alert { background-color: #493126; }
 }
 
 .setup-step:not([hidden]) {
