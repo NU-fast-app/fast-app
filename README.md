@@ -49,6 +49,7 @@ The demo accounts all use the password `password`:
 Emails (confirming an address, resetting a password) aren't sent: the links appear in the Auth tab of the Emulator UI.
 
 `npm run test:rules` runs the security rules tests in `tests/` against the Firestore emulator.
+`npm run test:unit` runs the other tests, `npm run lint` checks the code with ESLint, and `npm run build` catches compile errors.
 
 ## Test a branch online
 
@@ -73,6 +74,42 @@ Run `npx firebase login` once first.
 `npm run dev` and `npm run dev:mobile` use the live project instead.
 The live project still runs the version from before sign-in, so use `npm run dev:local` or the dev project until it's moved over.
 
+## CI and deploys
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`:
+
+1. **Check**: `npm run lint`, `npm run build`, `npm run test:unit`, `npm run test:rules` and `npm audit --omit=dev --audit-level=high`.
+Any failure fails the run; lint warnings don't.
+2. **Preview** (pull requests): once the checks pass, the branch is deployed to a 7-day preview address on the dev project, and a bot comments the address on the pull request.
+Like `npm run deploy:branch`, it shares the dev project's database and deployed rules.
+3. **Deploy dev** (pushes to `main`, which includes merging a pull request): once the checks pass, `npm run deploy:dev` deploys the site, `firestore.rules` and `firestore.indexes.json` to https://fast-app-cs499-dev.web.app.
+Deploys run one at a time, in order.
+
+The live project is never deployed from CI.
+Dependabot (`.github/dependabot.yml`) opens pull requests for dependency and GitHub Actions updates every Monday; review and merge them like any other pull request.
+
+### Before merging a pull request
+
+`main` isn't protected: GitHub lets anyone with write access merge a pull request even if its checks failed, or push to `main` directly.
+Every change that reaches `main` is deployed to the dev site, its rules and its indexes automatically, so check each pull request before merging it:
+
+- The **check** job passed (a green check on the pull request).
+- You tried the preview address the bot commented, especially for anything a person sees or does.
+- The changes are what the pull request says, and a rules change has tests.
+
+### Setup (already done)
+
+The deploy steps use a Google service account that can deploy to the dev project, stored as the repository secret `FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV`.
+Without the secret (as on Dependabot's and forks' pull requests), the checks still run and the deploys are skipped, with a notice on the run.
+This is how it was set up, in case it has to be done again:
+
+1. In a terminal (it asks questions, so not from a tool that can't answer them), run `npx firebase init hosting:github --project fast-app-cs499-dev`.
+Without `--project` it uses the default project, which is the live one.
+Choose the `NU-fast-app/fast-app` repository, and answer No to every question after that.
+It creates a service account (`github-action-...@fast-app-cs499-dev.iam.gserviceaccount.com`) and saves the secret.
+2. Undo what it changes in the folder: delete the `.github/workflows/firebase-hosting-*.yml` files it writes (`ci.yml` already does their job), and run `git checkout .firebaserc`, which it switches to the dev project.
+3. Give the service account two more roles on `fast-app-cs499-dev`, so `deploy-dev` can deploy rules and indexes: **Firebase Rules Admin** and **Cloud Datastore Index Admin** (Google Cloud console, IAM and admin, IAM; or `gcloud projects add-iam-policy-binding`).
+
 ## Use your own Firebase project
 
 To run a fork on your own Firebase project:
@@ -90,6 +127,17 @@ npx firebase deploy --only firestore,hosting --project your-project-id
 ```
 
 The free Spark plan is enough.
+
+## Dependency notes
+
+**The `@grpc/grpc-js` override.**
+`package.json` has an `overrides` entry that forces `@grpc/grpc-js` to 1.14 or newer.
+It's there because Firebase, even 13.4.0, depends on `@grpc/grpc-js` 1.9, which `npm audit` reports as a high-severity vulnerability (fixed in 1.13.6).
+gRPC only runs in Firebase's Node build, which the seed script and the rules tests use; the app in the browser talks to Firestore over HTTPS and never loads it.
+The seed and all rules tests pass with the newer version.
+
+Remove the override once a Firebase release depends on `@grpc/grpc-js` 1.13.6 or newer (check with `npm view @firebase/firestore dependencies`): delete it, run `npm install`, and make sure `npm audit --omit=dev` still finds nothing.
+If the seed or the rules tests ever fail with gRPC errors after a Firebase update, suspect this override first.
 
 ## Built with
 

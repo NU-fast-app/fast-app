@@ -1,0 +1,104 @@
+# Checks every pull request and every push to main, then deploys:
+#   check       lint, build, unit tests, security rules tests and npm audit
+#   preview     a pull request: deploy it to a 7-day preview address on the dev project, linked on the PR
+#   deploy-dev  a push to main: deploy the site, rules and indexes to https://fast-app-cs499-dev.web.app
+# The live project (fast-app-cs499) is never deployed from here.
+# Deploying needs the FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV secret (see README.md, "CI and deploys").
+# Without it, as on Dependabot's and forks' pull requests, the checks still run and the deploys are skipped.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request cancels its older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      can-deploy: ${{ steps.deploy-access.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      # The Firestore emulator, for the rules tests, needs Java 21 or newer.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run test:unit
+      - run: npm run test:rules
+      # The app's own dependencies only: dev tools like firebase-tools never reach users.
+      - run: npm audit --omit=dev --audit-level=high
+      - id: deploy-access
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV }}
+        run: |
+          if [ -n "$SERVICE_ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV secret, so nothing is deployed."
+          fi
+
+  preview:
+    needs: check
+    if: github.event_name == 'pull_request' && needs.check.outputs.can-deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write # to comment the preview address on the pull request
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build:dev
+      # Hosting only: the preview uses the dev project's database and its deployed rules, not this branch's.
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV }}
+          projectId: fast-app-cs499-dev
+          expires: 7d
+
+  deploy-dev:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.check.outputs.can-deploy == 'true'
+    runs-on: ubuntu-latest
+    # One deploy at a time, in order: a second merge waits for the first deploy instead of racing it.
+    concurrency:
+      group: deploy-dev
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV }}
+      # Builds for the dev project, then deploys hosting, firestore.rules and firestore.indexes.json to it.
+      - run: npm run deploy:dev
