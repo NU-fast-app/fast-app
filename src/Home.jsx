@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { localDay } from './playing.js';
-import { playbackProgress, SESSION_GOAL } from './playbackProgress.js';
+import { completedDaysPercent, COMPLETED_DAYS_GOAL, playbackProgress, SESSION_GOAL } from './playbackProgress.js';
 import { listSessions } from './sessions.js';
 import NavBar from './NavBar.jsx';
 import { SetGroups } from './StorySets.jsx';
@@ -13,7 +13,7 @@ import { SETS } from './stories.js';
 // `summary` is null while the stories load. `onRecord`, `onRecordInSet` and `onPlay` are null when
 // the person's access level doesn't include them.
 export default function Home({
-  groupId, groupName, canSwitch, onSwitch, notice, summary, menuButton, onRecord, onRecordInSet, onListen, onPlay,
+  groupId, groupName, canSwitch, onSwitch, notice, summary, menuButton, onRecord, onRecordInSet, onListen, onPlay, onSetup,
 }) {
   const [progressState, setProgressState] = useState({ loading: true });
   const [attempt, setAttempt] = useState(0);
@@ -49,6 +49,11 @@ export default function Home({
           </p>
         </div>
         {notice && <p className="notice" role="status">{notice}</p>}
+        {onSetup && <section className="card setup-alert" aria-labelledby="setup-heading">
+          <h2 id="setup-heading">Complete your care team setup</h2>
+          <p>Tell us about your role and whether a clinician will be involved in your loved one&apos;s care.</p>
+          <button className="pill pill-primary" onClick={onSetup}>Continue setup</button>
+        </section>}
 
         <section className="card playback-progress" aria-labelledby="playback-heading">
           <h2 id="playback-heading">Playback progress</h2>
@@ -87,8 +92,11 @@ export default function Home({
                 <div className="playback-ring">
                   <svg viewBox="0 0 120 120" aria-hidden="true">
                     <circle className="ring-track" cx="60" cy="60" r="54" />
+                    {progressState.progress.completedDays > 0 && (
+                      <circle className="ring-fill" cx="60" cy="60" r="54" pathLength="100" strokeDasharray={`${completedDaysPercent(progressState.progress.completedDays)} 100`} />
+                    )}
                   </svg>
-                  <div><strong>{progressState.progress.completedDays} {progressState.progress.completedDays === 1 ? 'day' : 'days'}</strong><span>all 4 sets played</span></div>
+                  <div><strong>{progressState.progress.completedDays} of {COMPLETED_DAYS_GOAL}</strong><span>days</span></div>
                 </div>
                 <span>Completed days</span>
               </div>
@@ -109,13 +117,15 @@ export default function Home({
               Record a story
             </button>
           )}
-          <button className={`pill ${onRecord ? 'pill-white' : 'pill-primary'}`} onClick={onListen}>
-            <HeadphonesIcon />
-            {onRecord ? 'Listen and Edit Stories' : 'Listen to Stories'}
-          </button>
+          {onListen && (
+            <button className={`pill ${onRecord ? 'pill-white' : 'pill-primary'}`} onClick={onListen}>
+              <HeadphonesIcon />
+              Listen and Edit Stories
+            </button>
+          )}
           {onPlay && (
             <>
-              <button className="pill pill-white" onClick={onPlay}>
+              <button className={`pill ${onRecord || onListen ? 'pill-white' : 'pill-primary'}`} onClick={onPlay}>
                 <PlayOutlineIcon />
                 Play Stories
               </button>

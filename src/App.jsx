@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CareTeam, { InviteSomeone } from './CareTeam.jsx';
-import YourCareTeams, { StartCareTeam } from './CareTeams.jsx';
-import { canManage, canPlay, canRecord } from './access.js';
+import YourCareTeams, { CareTeamSetup, StartCareTeam } from './CareTeams.jsx';
+import { canListen, canManage, canPlay, canRecord } from './access.js';
 import EditStory from './EditStory.jsx';
 import Home from './Home.jsx';
 import JoinGroup from './JoinGroup.jsx';
@@ -83,13 +83,13 @@ function firstScreen() {
 const MENU = [
   { label: 'Home', screen: HOME, icon: <HomeIcon /> },
   { label: 'Record a Story', screen: SETS_SCREEN, icon: <MicIcon />, allowed: canRecord },
-  { label: 'Listen and Edit Stories', readOnlyLabel: 'Listen to Stories', sidebarLabel: 'Listen', screen: STORIES_SCREEN, icon: <HeadphonesIcon /> },
+  { label: 'Listen and Edit Stories', sidebarLabel: 'Listen', screen: STORIES_SCREEN, icon: <HeadphonesIcon />, allowed: canListen },
   { label: 'Play Stories', sidebarLabel: 'Play', screen: PLAY_SCREEN, icon: <PlayOutlineIcon />, allowed: canPlay },
   { label: 'Care team', screen: TEAM_SCREEN, icon: <PeopleIcon /> },
 ];
 
 // The screens each access level needs, beyond the ones everyone has.
-const NEEDS = { sets: canRecord, record: canRecord, edit: canRecord, play: canPlay, invite: canManage };
+const NEEDS = { sets: canRecord, record: canRecord, stories: canListen, edit: canRecord, play: canPlay, invite: canManage, setup: (access) => access === 'lead', setupInvite: (access) => access === 'lead' };
 
 // The menu item each screen belongs to: recording starts from the sets, editing from Listen,
 // and inviting, switching and starting care teams from Care team.
@@ -281,10 +281,9 @@ function CareApp({ user }) {
     setNotice(name ? `You joined ${name}'s care team. Welcome!` : 'You joined the care team. Welcome!');
   }
 
-  async function started(groupId, message) {
+  async function started(groupId) {
     await refreshGroups();
     showGroup(groupId, { screen: HOME, replace: screen.name !== 'newTeam' });
-    setNotice(message);
   }
 
   async function left(message) {
@@ -444,6 +443,10 @@ function CareApp({ user }) {
     );
   } else if (screen.name === 'invite') {
     content = <InviteSomeone user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} onDone={goBack} />;
+  } else if (screen.name === 'setup') {
+    content = <CareTeamSetup key={currentGroup.id} user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} onSaved={refreshGroups} onDone={() => goTo(HOME)} />;
+  } else if (screen.name === 'setupInvite') {
+    content = <InviteSomeone key={currentGroup.id} user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} clinicianSetup onSetupSaved={refreshGroups} onDone={() => goTo(HOME)} />;
   } else if (screen.name === 'home') {
     content = (
       <Home
@@ -455,9 +458,10 @@ function CareApp({ user }) {
         notice={notice}
         summary={summary}
         menuButton={menuButton}
+        onSetup={access === 'lead' && (!currentGroup.ownerRole || (currentGroup.ownerRole === 'caregiver' && !['yes', 'no'].includes(currentGroup.clinicianParticipation))) ? () => goTo({ name: 'setup' }) : null}
         onRecord={canRecord(access) ? () => goTo(SETS_SCREEN) : null}
         onRecordInSet={canRecord(access) ? recordInSet : null}
-        onListen={() => goTo(STORIES_SCREEN)}
+        onListen={canListen(access) ? () => goTo(STORIES_SCREEN) : null}
         onPlay={canPlay(access) ? () => goTo(PLAY_SCREEN) : null}
       />
     );
@@ -551,7 +555,7 @@ function CareApp({ user }) {
                 className={item.screen.name === section ? 'current' : ''}
                 onClick={() => goTo(item.screen)}
               >
-                {!canRecord(access) && item.readOnlyLabel ? item.readOnlyLabel : item.label}
+                {item.label}
               </button>
             ))}
             <hr />

@@ -2,8 +2,8 @@
 // each person one level when inviting them, and can change it or remove them later. Administrators
 // can do the same for everyone except the lead caregiver and themselves.
 //
-// Every level can listen to the stories. The lead caregiver has every permission.
-// Must match firestore.rules.
+// Players can play sets but cannot open Listen. The lead caregiver has every permission.
+// Firestore still allows every member to read audio needed for playback.
 
 export const ACCESS = [
   {
@@ -24,7 +24,7 @@ export const ACCESS = [
   {
     key: 'player',
     label: 'Play stories',
-    does: 'play story sets to the patient, and listen to the stories',
+    does: 'play story sets to the patient',
   },
 ];
 
@@ -43,4 +43,5 @@ export function accessDoes(key) {
 // What a level allows. `access` is a level's key, or 'lead' for the lead caregiver.
 export const canManage = (access) => access === 'lead' || access === 'administrator';
 export const canRecord = (access) => access !== 'player';
+export const canListen = (access) => access !== 'player';
 export const canPlay = (access) => access !== 'stories';

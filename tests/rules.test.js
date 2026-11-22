@@ -41,6 +41,10 @@ function member(person, extra = {}) {
   return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined));
 }
 
+const invite = (fields = {}) => ({
+  email: 'rosa@example.com', groupName: 'Sam Smith', invitedBy: 'ann', invitedByName: 'Ann', access: 'stories', createdAt: serverTimestamp(), ...fields,
+});
+
 beforeEach(async () => {
   await env.clearFirestore();
   await env.withSecurityRulesDisabled(async (context) => {
@@ -94,6 +98,15 @@ describe('starting a group', () => {
   let access = 'administrator';
 
   test('anyone signed in can start a group, as its owner', () => assertSucceeds(start(as(MIA), MIA, 'rosa')));
+  test('a new caregiver or clinician group includes valid setup fields', async () => {
+    await assertSucceeds(start(as(MIA), MIA, 'rosa', { ownerRole: 'caregiver', clinicianParticipation: null }));
+    await assertSucceeds(start(as(MIA), MIA, 'jane', { ownerRole: 'clinician', clinicianParticipation: null }));
+  });
+  test('invalid or incomplete setup fields are rejected on create', async () => {
+    await assertFails(start(as(MIA), MIA, 'rosa', { ownerRole: 'owner', clinicianParticipation: null }));
+    await assertFails(start(as(MIA), MIA, 'rosa', { ownerRole: 'clinician', clinicianParticipation: 'yes' }));
+    await assertFails(start(as(MIA), MIA, 'rosa', { ownerRole: 'caregiver' }));
+  });
   test('the owner is an administrator', async () => {
     access = 'player';
     await assertFails(start(as(MIA), MIA, 'rosa'));
@@ -114,6 +127,37 @@ describe('starting a group', () => {
   test('a group never changes', () => assertFails(updateDoc(doc(as(ANN), 'groups/sam'), { name: 'Sam' })));
 });
 
+describe('care team setup', () => {
+  test('the owner can complete a legacy group without changing other fields', async () => {
+    const group = doc(as(ANN), 'groups/sam');
+    await assertSucceeds(updateDoc(group, { ownerRole: 'caregiver', clinicianParticipation: null }));
+    await assertSucceeds(updateDoc(group, { ownerRole: 'caregiver', clinicianParticipation: 'no' }));
+    await assertSucceeds(updateDoc(group, { ownerRole: 'clinician', clinicianParticipation: null }));
+    await assertFails(updateDoc(group, { ownerRole: 'caregiver', clinicianParticipation: 'yes', name: 'Other' }));
+  });
+  test('administrators, clinicians, members and outsiders cannot change setup', async () => {
+    for (const person of [IVY, CLEO, JEFF, PAT, MIA]) {
+      await assertFails(updateDoc(doc(as(person), 'groups/sam'), { ownerRole: 'caregiver', clinicianParticipation: 'no' }));
+    }
+  });
+  test('invalid setup combinations and removal of a field are rejected', async () => {
+    const group = doc(as(ANN), 'groups/sam');
+    await assertFails(updateDoc(group, { ownerRole: 'other', clinicianParticipation: null }));
+    await assertFails(updateDoc(group, { ownerRole: 'clinician', clinicianParticipation: 'yes' }));
+    await assertFails(updateDoc(group, { ownerRole: 'caregiver', clinicianParticipation: true }));
+    await assertFails(updateDoc(group, { ownerRole: 'caregiver' }));
+    await assertSucceeds(updateDoc(group, { ownerRole: 'caregiver', clinicianParticipation: null }));
+    await assertFails(updateDoc(group, { clinicianParticipation: deleteField() }));
+  });
+  test('a clinician invite and completion can be created together', () => {
+    const db = as(ANN);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'groups/sam/invites/clinician'), invite({ access: 'clinician' }));
+    batch.update(doc(db, 'groups/sam'), { ownerRole: 'caregiver', clinicianParticipation: 'yes' });
+    return assertSucceeds(batch.commit());
+  });
+});
+
 describe('reading groups and members', () => {
   test('members read their group', () => assertSucceeds(getDoc(doc(as(JEFF), 'groups/sam'))));
   test('others cannot', () => assertFails(getDoc(doc(as(MIA), 'groups/sam'))));
@@ -126,10 +170,6 @@ describe('reading groups and members', () => {
 });
 
 describe('invites', () => {
-  const invite = (fields = {}) => ({
-    email: 'rosa@example.com', groupName: 'Sam Smith', invitedBy: 'ann', invitedByName: 'Ann', access: 'stories', createdAt: serverTimestamp(), ...fields,
-  });
-
   test('the owner invites', () => assertSucceeds(setDoc(doc(as(ANN), 'groups/sam/invites/new'), invite())));
   test('members cannot', () => assertFails(setDoc(doc(as(JEFF), 'groups/sam/invites/new'), invite({ invitedBy: 'jeff' }))));
   test('administrators invite, list and cancel invites', async () => {

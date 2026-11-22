@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import NavBar from './NavBar.jsx';
 import { ACCESS, accessDoes, accessLabel, canManage } from './access.js';
 import {
-  cancelInvite, createInvite, inviteLink, listInvites, listMembers, normalizeEmail, removeMember, setMemberAccess,
+  cancelInvite, createInvite, inviteLink, listInvites, listMembers, normalizeEmail, removeMember, setMemberAccess, setOwnerSetup,
 } from './group.js';
 import { CheckIcon, CopyIcon, MoreIcon, PlusIcon, ShareIcon } from './icons.jsx';
 
@@ -279,10 +279,10 @@ export default function CareTeam({ user, group, notice: startNotice, menuButton,
 
 // Inviting someone: their email address, then a link to send them from your own phone.
 // The app can't send email itself on the free plan, and a link works by text message too.
-export function InviteSomeone({ user, group, backButton, menuButton, onDone }) {
+export function InviteSomeone({ user, group, backButton, menuButton, onDone, clinicianSetup = false, onSetupSaved, initialLink = null }) {
   const [email, setEmail] = useState('');
-  const [access, setAccess] = useState('stories');
-  const [link, setLink] = useState(null); // { email, url } once the invite exists
+  const [access, setAccess] = useState(clinicianSetup ? 'clinician' : 'stories');
+  const [link, setLink] = useState(initialLink); // { email, url } once the invite exists
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -299,7 +299,16 @@ export function InviteSomeone({ user, group, backButton, menuButton, onDone }) {
         return;
       }
       const existing = invites.find((invite) => invite.email === address);
-      const inviteId = existing?.id ?? await createInvite(group, user, address, access);
+      if (clinicianSetup && existing && existing.access !== 'clinician') {
+        setError(`${address} already has a pending invite with different access. Cancel it before creating a clinician invite.`);
+        return;
+      }
+      const inviteId = existing?.id ?? await createInvite(group, user, address, access, clinicianSetup);
+      if (clinicianSetup && existing) await setOwnerSetup(group.id, 'caregiver', 'yes');
+      if (clinicianSetup) {
+        await onSetupSaved();
+        try { localStorage.removeItem(`fastapp.setup.${group.id}`); } catch { /* Storage is optional. */ }
+      }
       setNotice(existing ? `${address} was already invited, with ${accessLabel(existing.access)} access, so this is the same link.` : '');
       setLink({ email: address, url: inviteLink(group.id, inviteId) });
     } catch (err) {
@@ -362,9 +371,9 @@ export function InviteSomeone({ user, group, backButton, menuButton, onDone }) {
     <>
       <NavBar left={backButton} right={menuButton} />
       <main className="content team-page">
-        <h1 className="page-title">Invite someone</h1>
+          <h1 className="page-title">{clinicianSetup ? 'Invite a clinician' : 'Invite someone'}</h1>
         <p className="lead">
-          Choose what they can do on {group.name}&apos;s care team. You can change it later.
+          {clinicianSetup ? 'Create an invite for a clinician. You can share the link after creating it.' : `Choose what they can do on ${group.name}'s care team. You can change it later.`}
         </p>
         <form className="sign-in-form" onSubmit={submit}>
           <label className="field">
@@ -380,7 +389,7 @@ export function InviteSomeone({ user, group, backButton, menuButton, onDone }) {
             />
             <span className="hint">They sign in with this address to join.</span>
           </label>
-          <AccessChoice value={access} onChange={setAccess} name="invite-access" />
+          {!clinicianSetup && <AccessChoice value={access} onChange={setAccess} name="invite-access" />}
           {error && <p className="error" role="alert">{error}</p>}
           <button className="pill pill-primary" type="submit" disabled={busy}>Create invite</button>
         </form>

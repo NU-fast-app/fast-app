@@ -17,11 +17,14 @@ rules_version = '2';
 //
 // Collection: groups/{groupId}
 // Group ID: lowercase letters, numbers and hyphens (the app makes 20 random characters).
-// Fields (all required at create, no others, never change after create):
+// Core fields (required at create, never changed):
 //   - id: string - the same as the document ID
 //   - name: string (1-100 chars) - the patient's name, e.g. "Sam Smith"
 //   - ownerId: string - the uid of the lead caregiver, who started the group
 //   - createdAt, updatedAt: timestamp - server time of the create
+// Optional owner setup fields, absent for legacy groups; only the owner may update them:
+//   - ownerRole: "caregiver" or "clinician"
+//   - clinicianParticipation: "yes" or "no" for a caregiver, null for a clinician or while unanswered
 // Field added later, once:
 //   - hearingAid: bool - whether the patient uses a hearing aid or other hearing accommodation,
 //     answered by a member who can play the first time a set is played; it can't be changed after that
@@ -245,13 +248,25 @@ service cloud.firestore {
 
     function isValidGroup(groupId, data) {
       let fields = ['id', 'name', 'ownerId', 'createdAt', 'updatedAt'];
-      return data.keys().hasAll(fields) && data.keys().hasOnly(fields)
+      return data.keys().hasAll(fields) && data.keys().hasOnly(fields.concat(['ownerRole', 'clinicianParticipation']))
+        && ((!('ownerRole' in data) && !('clinicianParticipation' in data)) || isValidOwnerSetup(data))
         && isValidGroupId(groupId)
         && data.id == groupId
         && isStringOfLength(data.name, 1, 100)
         && data.ownerId == request.auth.uid
         && data.createdAt == request.time
         && data.updatedAt == request.time;
+    }
+
+    function isValidOwnerSetup(data) {
+      return data.keys().hasAll(['ownerRole', 'clinicianParticipation'])
+        && ((data.ownerRole == 'clinician' && data.clinicianParticipation == null)
+          || (data.ownerRole == 'caregiver' && data.clinicianParticipation in [null, 'yes', 'no']));
+    }
+
+    function isSettingOwnerSetup() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ownerRole', 'clinicianParticipation'])
+        && isValidOwnerSetup(request.resource.data);
     }
 
     // A member document for the signed-in person, with their own email address.
@@ -460,7 +475,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && isValidGroup(groupId, request.resource.data)
         && existsAfter(memberPath(groupId, request.auth.uid));
-      allow update: if canPlay(groupId) && isSettingHearingAid();
+      allow update: if (canPlay(groupId) && isSettingHearingAid()) || (isOwner(groupId) && isSettingOwnerSetup());
       allow delete: if false;
 
       match /members/{memberId} {
