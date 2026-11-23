@@ -1,18 +1,22 @@
 import {
-  collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where, writeBatch,
+  collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where, writeBatch,
 } from 'firebase/firestore/lite';
+import { DEFAULT_ACCESS } from './access.js';
 import { displayName } from './auth.js';
 import { db } from './firebase.js';
 
 // A group is one patient's care team (the interface says "care team"; the project doc says "treatment"):
 //
-//   groups/{groupId}                   id, name (the patient's name), ownerId, createdAt, updatedAt
-//   groups/{groupId}/members/{uid}     uid, name, email, joinedAt, and invite (the invite they accepted)
-//   groups/{groupId}/invites/{id}      email, groupName, invitedBy, invitedByName, createdAt
+//   groups/{groupId}                   id, name (the patient's name), ownerId, createdAt, updatedAt,
+//                                      and hearingAid once someone has answered it
+//   groups/{groupId}/members/{uid}     uid, name, email, joinedAt, access, and invite (the invite they accepted)
+//   groups/{groupId}/invites/{id}      email, groupName, invitedBy, invitedByName, access, createdAt
+//   groups/{groupId}/sessions/{id}     each time a set was played (see sessions.js)
 //
-// The owner is the lead caregiver: they start the group, invite people and remove them.
-// Every other member can record, listen to, edit and move the group's stories.
-// An invite is a link for one email address; only someone signed in with that address can use it.
+// The owner is the lead caregiver: they start the group, and invite, remove and set the access of
+// everyone else. Each member has an access level (see access.js); administrators manage people too.
+// An invite is a link for one email address and one access level; only someone signed in with that
+// address can use it, and they join with that level.
 
 // Group IDs appear in URLs and are Firestore document IDs.
 export function isValidGroupId(groupId) {
@@ -35,66 +39,89 @@ const groupRef = (groupId) => doc(db, 'groups', groupId);
 const membersRef = (groupId) => collection(db, 'groups', groupId, 'members');
 const invitesRef = (groupId) => collection(db, 'groups', groupId, 'invites');
 
-// The groups the signed-in person belongs to, by name.
+// The groups the signed-in person belongs to, by name, each with their `access` in it: 'lead' for
+// the lead caregiver, otherwise their access level.
 export async function listMyGroups(uid) {
-  const memberships = await getDocs(query(collectionGroup(db, 'members'), where('uid', '==', uid)));
-  const groupIds = memberships.docs
-    .filter((d) => d.ref.parent.parent?.parent.id === 'groups')
-    .map((d) => d.ref.parent.parent.id);
-  const groups = await Promise.all(groupIds.map((id) => getDoc(groupRef(id))));
+  const memberships = (await getDocs(query(collectionGroup(db, 'members'), where('uid', '==', uid)))).docs
+    .filter((d) => d.ref.parent.parent?.parent.id === 'groups');
+  const groups = await Promise.all(memberships.map((m) => getDoc(m.ref.parent.parent)));
   return groups
-    .filter((d) => d.exists())
-    .map((d) => ({ id: d.id, name: d.data().name, ownerId: d.data().ownerId }))
+    .map((d, i) => d.exists() && {
+      id: d.id,
+      name: d.data().name,
+      ownerId: d.data().ownerId,
+      ownerRole: d.data().ownerRole,
+      clinicianParticipation: d.data().clinicianParticipation,
+      hearingAid: d.data().hearingAid,
+      access: d.data().ownerId === uid ? 'lead' : memberships[i].data().access ?? DEFAULT_ACCESS,
+    })
+    .filter(Boolean)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Whether the patient uses a hearing aid (or another hearing accommodation), asked the first time
+// someone plays a set. It's answered once per care team; the eligibility survey will ask it later.
+export function setHearingAid(groupId, hearingAid) {
+  return updateDoc(groupRef(groupId), { hearingAid });
 }
 
 // Start a group with the signed-in person as its owner and first member, in one batch.
 // Returns the new group's ID.
-export async function createGroup(user, patientName) {
+export async function createGroup(user, patientName, ownerRole) {
   const id = newGroupId();
   const batch = writeBatch(db);
   batch.set(groupRef(id), {
     id,
     name: patientName.trim(),
     ownerId: user.uid,
+    ...(ownerRole ? { ownerRole, clinicianParticipation: null } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
-  batch.set(doc(membersRef(id), user.uid), memberFor(user));
+  batch.set(doc(membersRef(id), user.uid), memberFor(user, 'administrator'));
   await batch.commit();
   return id;
 }
 
-function memberFor(user) {
-  return { uid: user.uid, name: displayName(user), email: normalizeEmail(user.email), joinedAt: serverTimestamp() };
+export function setOwnerSetup(groupId, ownerRole, clinicianParticipation) {
+  return updateDoc(groupRef(groupId), { ownerRole, clinicianParticipation });
 }
 
-// Everyone in the group: the owner first, then by name.
+function memberFor(user, access) {
+  return { uid: user.uid, name: displayName(user), email: normalizeEmail(user.email), joinedAt: serverTimestamp(), access };
+}
+
+// Everyone in the group: the owner first, then by name, each with their access level.
 export async function listMembers(group) {
   const snapshot = await getDocs(membersRef(group.id));
   return snapshot.docs
-    .map((d) => d.data())
+    .map((d) => ({ ...d.data(), access: d.data().access ?? DEFAULT_ACCESS }))
     .sort((a, b) => (b.uid === group.ownerId) - (a.uid === group.ownerId) || a.name.localeCompare(b.name));
 }
 
-// Invites nobody has accepted yet, oldest first. Only the owner can read them.
+// Invites nobody has accepted yet, oldest first. Only the owner and administrators can read them.
 export async function listInvites(groupId) {
   const snapshot = await getDocs(invitesRef(groupId));
   return snapshot.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
+    .map((d) => ({ id: d.id, ...d.data(), access: d.data().access ?? DEFAULT_ACCESS }))
     .sort((a, b) => a.createdAt.toMillis() - b.createdAt.toMillis());
 }
 
-// Invite an email address to the group. Returns the invite's ID, which is the secret part of its link.
-export async function createInvite(group, user, email) {
+// Invite an email address to the group with an access level. Returns the invite's ID, which is the
+// secret part of its link.
+export async function createInvite(group, user, email, access, completeSetup = false) {
   const inviteRef = doc(invitesRef(group.id));
-  await setDoc(inviteRef, {
+  const batch = writeBatch(db);
+  batch.set(inviteRef, {
     email: normalizeEmail(email),
     groupName: group.name,
     invitedBy: user.uid,
     invitedByName: displayName(user),
+    access,
     createdAt: serverTimestamp(),
   });
+  if (completeSetup) batch.update(groupRef(group.id), { ownerRole: 'caregiver', clinicianParticipation: 'yes' });
+  await batch.commit();
   return inviteRef.id;
 }
 
@@ -114,22 +141,27 @@ export function inviteLink(groupId, inviteId) {
 export async function getInvite(groupId, inviteId) {
   try {
     const snapshot = await getDoc(doc(invitesRef(groupId), inviteId));
-    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+    return snapshot.exists() ? { id: snapshot.id, ...snapshot.data(), access: snapshot.data().access ?? DEFAULT_ACCESS } : null;
   } catch (err) {
     if (err.code === 'permission-denied') return null;
     throw err;
   }
 }
 
-// Join the group: become a member and use up the invite, in one batch.
-export async function acceptInvite(groupId, inviteId, user) {
+// Join the group with the invite's access level: become a member and use up the invite, in one batch.
+export async function acceptInvite(invite, groupId, user) {
   const batch = writeBatch(db);
-  batch.set(doc(membersRef(groupId), user.uid), { ...memberFor(user), invite: inviteId });
-  batch.delete(doc(invitesRef(groupId), inviteId));
+  batch.set(doc(membersRef(groupId), user.uid), { ...memberFor(user, invite.access), invite: invite.id });
+  batch.delete(doc(invitesRef(groupId), invite.id));
   await batch.commit();
 }
 
-// The owner removes someone, or a member leaves.
+// Change someone's access level. Only the owner and administrators can, and not their own or the owner's.
+export function setMemberAccess(groupId, uid, access) {
+  return updateDoc(doc(membersRef(groupId), uid), { access });
+}
+
+// The owner or an administrator removes someone, or a member leaves.
 export function removeMember(groupId, uid) {
   return deleteDoc(doc(membersRef(groupId), uid));
 }

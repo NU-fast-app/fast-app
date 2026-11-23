@@ -12,7 +12,12 @@ Family members record personal stories for a loved one with a disorder of consci
 
 - Sign in with Google, or with an email address and a password (with password reset and email confirmation).
 - Start a care team for a patient, invite family and friends with a link, and switch between care teams.
-The lead caregiver who started the team invites and removes people; everyone else can record, listen, edit and leave.
+  The team owner selects their relationship to the patient and, if they are a caregiver, whether a clinician will participate. When they invite a clinician, the app creates a link to share; it does not send email automatically. Existing team owners are prompted to complete missing setup.
+  `groups/{groupId}` stores `ownerRole` (`caregiver` or `clinician`) and `clinicianParticipation` (`yes`, `no`, or `null` while unanswered/not applicable); these do not change member access. Older groups may lack both fields.
+  For a new team, the name and setup answers are entered before the team is created. The team is created on Finish setup, or on Complete immediately before creating a clinician invite. If that invite fails, retrying uses the same team; after leaving, its owner can resume from Home.
+The lead caregiver who started the team and administrators can invite and remove people.
+Members can record and edit stories or play sets according to their access level.
+Players cannot open Listen, but the database allows them to read the story audio used for set playback.
 Only a care team's members can see or change its stories, which the database's security rules enforce.
 - Record a story in 3 steps: the patient's name said 3 times, the story (up to 5:00, counting the name), then its details.
 - Track each set toward its 9:00 to 11:00 target.
@@ -21,7 +26,7 @@ Only a care team's members can see or change its stories, which the database's s
 - Listen to whole sets or single stories, seek within them, and move or swap stories between sets of the same kind.
 - Works on phones and on computers (with a sidebar layout at 960 px and wider), in light and dark mode.
 
-Separate access levels (administrator, clinician, storyteller, player), the eligibility survey, clinician approval and playing sessions to the patient are not built yet.
+The eligibility survey and clinician approval are not built yet.
 
 ## Run it
 
@@ -35,6 +40,8 @@ npm run dev:local   # then open http://localhost:5173
 `npm run dev:local` runs the app against Firestore and Auth emulators on your computer, filled with demo accounts and sample stories, so you can sign in, record, edit, move, delete and invite freely.
 It needs Java 21 or newer.
 The local data resets each time you stop it (Ctrl+C), and the emulators' own UI at http://127.0.0.1:4000 shows the database and the accounts.
+On a Mac, the sample stories are spoken by the built-in voices, each starting with "Sam" said 3 times; the first run takes about 20 seconds to make them.
+On other computers they're a voice-like hum.
 
 The demo accounts all use the password `password`:
 
@@ -48,6 +55,7 @@ The demo accounts all use the password `password`:
 Emails (confirming an address, resetting a password) aren't sent: the links appear in the Auth tab of the Emulator UI.
 
 `npm run test:rules` runs the security rules tests in `tests/` against the Firestore emulator.
+`npm run test:unit` runs the other tests, `npm run lint` checks the code with ESLint, and `npm run build` catches compile errors.
 
 ## Test a branch online
 
@@ -72,6 +80,42 @@ Run `npx firebase login` once first.
 `npm run dev` and `npm run dev:mobile` use the live project instead.
 The live project still runs the version from before sign-in, so use `npm run dev:local` or the dev project until it's moved over.
 
+## CI and deploys
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and every push to `main`:
+
+1. **Check**: `npm run lint`, `npm run build`, `npm run test:unit`, `npm run test:rules` and `npm audit --omit=dev --audit-level=high`.
+Any failure fails the run; lint warnings don't.
+2. **Preview** (pull requests): once the checks pass, the branch is deployed to a 7-day preview address on the dev project, and a bot comments the address on the pull request.
+Like `npm run deploy:branch`, it shares the dev project's database and deployed rules.
+3. **Deploy dev** (pushes to `main`, which includes merging a pull request): once the checks pass, `npm run deploy:dev` deploys the site, `firestore.rules` and `firestore.indexes.json` to https://fast-app-cs499-dev.web.app.
+Deploys run one at a time, in order.
+
+The live project is never deployed from CI.
+Dependabot (`.github/dependabot.yml`) opens pull requests for dependency and GitHub Actions updates every Monday; review and merge them like any other pull request.
+
+### Before merging a pull request
+
+`main` isn't protected: GitHub lets anyone with write access merge a pull request even if its checks failed, or push to `main` directly.
+Every change that reaches `main` is deployed to the dev site, its rules and its indexes automatically, so check each pull request before merging it:
+
+- The **check** job passed (a green check on the pull request).
+- You tried the preview address the bot commented, especially for anything a person sees or does.
+- The changes are what the pull request says, and a rules change has tests.
+
+### Setup (already done)
+
+The deploy steps use a Google service account that can deploy to the dev project, stored as the repository secret `FIREBASE_SERVICE_ACCOUNT_FAST_APP_CS499_DEV`.
+Without the secret (as on Dependabot's and forks' pull requests), the checks still run and the deploys are skipped, with a notice on the run.
+This is how it was set up, in case it has to be done again:
+
+1. In a terminal (it asks questions, so not from a tool that can't answer them), run `npx firebase init hosting:github --project fast-app-cs499-dev`.
+Without `--project` it uses the default project, which is the live one.
+Choose the `NU-fast-app/fast-app` repository, and answer No to every question after that.
+It creates a service account (`github-action-...@fast-app-cs499-dev.iam.gserviceaccount.com`) and saves the secret.
+2. Undo what it changes in the folder: delete the `.github/workflows/firebase-hosting-*.yml` files it writes (`ci.yml` already does their job), and run `git checkout .firebaserc`, which it switches to the dev project.
+3. Give the service account two more roles on `fast-app-cs499-dev`, so `deploy-dev` can deploy rules and indexes: **Firebase Rules Admin** and **Cloud Datastore Index Admin** (Google Cloud console, IAM and admin, IAM; or `gcloud projects add-iam-policy-binding`).
+
 ## Use your own Firebase project
 
 To run a fork on your own Firebase project:
@@ -89,6 +133,17 @@ npx firebase deploy --only firestore,hosting --project your-project-id
 ```
 
 The free Spark plan is enough.
+
+## Dependency notes
+
+**The `@grpc/grpc-js` override.**
+`package.json` has an `overrides` entry that forces `@grpc/grpc-js` to 1.14 or newer.
+It's there because Firebase, even 13.4.0, depends on `@grpc/grpc-js` 1.9, which `npm audit` reports as a high-severity vulnerability (fixed in 1.13.6).
+gRPC only runs in Firebase's Node build, which the seed script and the rules tests use; the app in the browser talks to Firestore over HTTPS and never loads it.
+The seed and all rules tests pass with the newer version.
+
+Remove the override once a Firebase release depends on `@grpc/grpc-js` 1.13.6 or newer (check with `npm view @firebase/firestore dependencies`): delete it, run `npm install`, and make sure `npm audit --omit=dev` still finds nothing.
+If the seed or the rules tests ever fail with gRPC errors after a Firebase update, suspect this override first.
 
 ## Built with
 

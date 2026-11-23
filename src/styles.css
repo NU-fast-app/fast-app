@@ -172,6 +172,7 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  column-gap: 0.5rem; /* keeps a long title off a wide button, like Instructions */
   min-height: 3rem;
   padding-top: max(0.75rem, env(safe-area-inset-top));
 }
@@ -302,21 +303,39 @@ button:disabled {
   box-shadow: var(--shadow);
 }
 
-.card-line {
+.setup-alert {
+  background-color: #fff1e8;
+  gap: 0.225rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .setup-alert { background-color: #493126; }
+}
+
+.setup-step:not([hidden]) {
+  display: contents;
+}
+
+.setup-alert h2, .setup-alert p {
+  margin: 0;
+}
+
+.setup-alert .pill {
+  margin-top: 0.75rem;
+}
+
+.setup-form .checklist legend {
+  margin-bottom: 0.75rem;
+}
+
+.setup-form .setup-question {
+  margin-top: 0.75rem;
+}
+
+.setup-confirm {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 0.75rem;
-}
-
-.card-line strong {
-  font-size: 1.1875rem;
-  font-weight: 600;
-}
-
-.card-line span {
-  font-size: 0.9375rem;
-  color: var(--muted);
 }
 
 .card-text {
@@ -522,20 +541,8 @@ button:disabled {
   background-color: var(--text);
 }
 
-.set-card .bar,
-.segments .bar {
+.set-card .bar {
   background-color: var(--glass);
-}
-
-/* Home: one bar segment per set, in that set's colors. */
-.segments {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.375rem;
-}
-
-.segments .bar {
-  background-color: var(--tint-bg);
 }
 
 /* ---------- Messages ---------- */
@@ -547,6 +554,12 @@ button:disabled {
   font-size: 0.9375rem;
   color: var(--done-text);
   background-color: var(--done-bg);
+}
+
+/* Something to consider, not a success: a quiet grey note. */
+.notice.caution {
+  color: var(--text);
+  background-color: var(--well);
 }
 
 .error {
@@ -619,7 +632,7 @@ body:has(.guide[open]) { overflow: hidden; }
 .guide-actions { display: flex; gap: 0.75rem; }
 .guide-actions .pill-primary { flex: 1; }
 
-/* A round button with only an icon, like Close or the record screen's info button. */
+/* A round button with only an icon, like the guide's Close. */
 .icon-button {
   display: inline-grid;
   place-items: center;
@@ -1133,14 +1146,9 @@ body:has(.guide[open]) { overflow: hidden; }
   font-weight: 600;
 }
 
-.recording-set-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
+.timer-hint.long {
+  color: var(--danger-text);
 }
-
-.recording-set-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; font-size: 0.9375rem; }
-.recording-set-row strong { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* "A little too long": the length, and how far over the limit it is. */
 .over-card .bar {
@@ -1343,6 +1351,138 @@ body:has(.guide[open]) { overflow: hidden; }
   position: absolute;
   opacity: 0;
   pointer-events: none;
+}
+
+/* ---------- Playing ---------- */
+
+/* Text for screen readers only, e.g. a list's name that the heading above already shows. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The checklists before playing: big rows that are easy to tap at a bedside. */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 3.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1.125rem;
+  line-height: 1.35;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-small);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.check-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.check-box {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 0.5rem;
+  color: transparent;
+  box-shadow: inset 0 0 0 2px var(--faint);
+}
+
+.check-box .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.check-row.on .check-box {
+  color: var(--on-primary);
+  background-color: var(--primary);
+  box-shadow: none;
+}
+
+.check-row:has(input:focus-visible) {
+  outline: 3px solid var(--primary);
+}
+
+/* The access level choices (Care team): a round mark, the level's name, and what it can do. */
+.check-box.round {
+  border-radius: 50%;
+}
+
+.access-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.access-text strong {
+  font-weight: 600;
+}
+
+.access-text span {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.change-access {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* "Patient may not be awake yet": the advice under the bold question reads as plain text. */
+.confirm p.card-text {
+  font-weight: 400;
+}
+
+/* A question after a session: the behavior, then More, Same and Less. */
+.question {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem 1rem;
+  border-radius: 1.125rem;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-small);
+}
+
+.question-label {
+  line-height: 1.35;
+}
+
+/* The set playing, in its affect's color. */
+.session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 1.25rem 1rem;
+  border-radius: 1.5rem;
+  background-color: var(--tint-bg);
+}
+
+.session-card .seek-times {
+  color: var(--tint-text);
 }
 
 /* ---------- Editor ---------- */
@@ -2210,4 +2350,29 @@ body:has(.guide[open]) { overflow: hidden; }
   button.person-row:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--primary-soft) 50%, transparent);
   }
+}
+
+/* Playback totals on Home. The days circle is a frame, not a progress scale. */
+.playback-progress h2 { margin: 0; font-size: 1.125rem; }
+.playback-progress > p { margin: 0; color: var(--muted); }
+.playback-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; align-items: end; }
+.playback-metric { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; color: var(--muted); font-size: 0.8125rem; font-weight: 600; }
+.playback-ring { width: min(100%, 9rem); aspect-ratio: 1; position: relative; display: grid; place-items: center; }
+.playback-ring svg { width: 100%; transform: rotate(-90deg); }
+.playback-ring circle { fill: none; stroke-width: 9; }
+.ring-track { stroke: var(--track); }
+.ring-fill { stroke: var(--primary); stroke-linecap: round; }
+.playback-ring > div { position: absolute; inset: 0.5rem; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; padding: 0.25rem; }
+.playback-metric strong { color: var(--text); font-size: 1.125rem; }
+.playback-metric span { display: block; }
+.playback-gauge { width: min(100%, 9rem); aspect-ratio: 1; position: relative; display: flex; flex-direction: column; justify-content: center; }
+.playback-gauge svg { width: 100%; overflow: visible; }
+.playback-gauge path { fill: none; stroke-width: 9; stroke-linecap: round; }
+.gauge-track { stroke: var(--track); }
+.gauge-fill { stroke: var(--primary); }
+.playback-gauge > div { position: absolute; inset: 48% 0 auto; }
+@media (max-width: 23rem) {
+  .playback-metrics { gap: 0.25rem; }
+  .playback-metric { font-size: 0.6875rem; }
+  .playback-metric strong { font-size: 0.9375rem; }
 }

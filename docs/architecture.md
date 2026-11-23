@@ -29,14 +29,14 @@ index.html → src/main.jsx → src/App.jsx
 - `App` waits for Firebase to say who is signed in (`useUser()` in `src/auth.js`), shows `SignIn` if nobody is, and otherwise renders `CareApp` keyed by the uid, so nothing carries over from one account to the next.
 - `CareApp` loads the person's groups (`listMyGroups()`), then shows, in order: the join screen if the URL has an invite for a group they aren't in, Start a care team if they have no group, or the app for the current group.
 - `CareApp` holds the current screen as a plain object, for example `{ name: 'record', affect: 'happy', setNumber: 1 }`.
-The screens are `home`, `sets`, `stories` (Listen), `record`, `edit`, `team` (Care team), `invite`, `teams` (Your care teams) and `newTeam`.
+The screens are `home`, `sets`, `stories` (Listen), `record`, `edit`, `play` (playing a set to the patient), `team` (Care team), `invite`, `teams` (Your care teams) and `newTeam`.
 - Every screen change is a browser history entry (`history.pushState`), so the phone's Back button and gesture work.
 `depth` counts the app's own screens behind the current one, so Back never leaves the app.
 - The current group comes from `?group=<groupId>`; without it, the app opens the group used last on that device (kept in `localStorage` per account), or the first.
 Switching groups pushes a history entry with the new URL, so Back and Forward restore the previous group.
 If the URL points to a group the person isn't in, the app shows Your care teams with a message instead.
-- After a reload the app reopens the last screen, except that `record` and `edit` fall back to the screen they came from: a recording in progress can't survive a reload.
-- `record` and `edit` are "focused": a narrower page, and on a computer the sidebar is locked so a recording isn't lost by a stray click.
+- After a reload the app reopens the last screen, except that `record` and `edit` fall back to the screen they came from, and `play` to Home: a recording or session in progress can't survive a reload.
+- `record`, `edit` and `play` are "focused": a narrower page, and on a computer the sidebar is locked so a recording or session isn't lost by a stray click.
 - To add a screen: add its name to the `screen` handling in `App`, decide its menu section in `SECTION`, whether it's in `FOCUSED`, and give it a `NavBar` (phone) like the others.
 
 ## Data flow
@@ -68,6 +68,12 @@ The redirect flow would need `authDomain` set to the app's own domain to work in
 - An invite's ID is the secret in its link.
 The rules only let the person it's for (by email) read it, so "for someone else" and "canceled" look the same to the app.
 - The owner is the group's `ownerId`, not a field on the member, so there's one place to change when the lead is handed over.
+- **Access levels** (`src/access.js`): each member document has `access` ("administrator", "clinician", "stories" or "player"); the owner's is "administrator", and a missing one means "stories".
+`listMyGroups()` gives each group the person's `access` ("lead" for the owner), and `canManage()`, `canRecord()`, `canListen()` and `canPlay()` decide what the menu, Home, Listen and Care team show.
+`App` also refuses a screen the level doesn't include (`NEEDS`), for Back to a screen from before a change.
+The rules enforce `canManage()`, `canRecord()` and `canPlay()` for writes, but do not enforce the Listen screen restriction.
+Players can still read story metadata and audio directly from Firestore, since set playback uses the same data.
+They accept members and invites without `access` (written by older versions of the app) as "stories", and joining must copy the invite's level, so leaving it out can't raise someone's access.
 
 ## Storage (`src/storage.js` and `firestore.rules`)
 
@@ -86,6 +92,9 @@ Editing a saved story's audio (`replaceStoryAudio()`) writes a new story and del
 The edited story gets a new id and a new `createdAt`, so it moves to the end of its set's list.
 - **Durations are measured, not read from the file.** Some browsers (Chrome's WebM) write recordings without a readable length, so `useRecorder` times the recording itself and the durations are stored in milliseconds as integers.
 Never take a length from an `<audio>` element.
+- **Sessions are saved once, then only marked as ended and answered.** Each play of a set is a document in `groups/{groupId}/sessions`, written by the member who played it, with the checklist answers checked against fixed lists.
+The only updates the rules allow are its player adding `endedAt` (server time) once, then `after` (the answers to the questions after it) once, and nobody can delete one, so the history of what was played can't be rewritten.
+A group's `hearingAid` can be added once by any member and never changed.
 - **The limits live in two places.** `src/stories.js` (`STORY_MAX`, `NAME_MAX`, `SET_MIN`, `SET_MAX`) and `firestore.rules` (the 5:00 and 1:00 limits, 5 chunks, 5 MB).
 Change both together.
 
@@ -124,6 +133,32 @@ Both clips of a story must be in the same format, because they're stored as one 
 When seeking to another clip, the player waits for its metadata before applying the position.
 - Only one player plays at a time: a module-level `current` remembers the playing player, and starting another pauses it.
 - Two looks: the full player (play button, label, progress bar) and `compact` (a story row).
+- `onPlay()` runs each time playback starts from a tap and `onEnd()` when the last clip finishes; `showLeft` shows the time left instead of the total.
+
+## Playback progress on Home
+
+Home loads the current care team's sessions when it opens or the team changes.
+`playbackProgress.js` counts only sessions with `endedAt`: distinct sets for today, every completed session toward 168, and days with all four distinct sets.
+The recorded `day` uses the playing device's local calendar; today uses `localDay()` on the viewing device.
+The screen shows loading and retry states if the records are unavailable.
+
+## Playing to the patient (`src/PlaySession.jsx`, `src/playing.js`, `src/sessions.js`)
+
+- `PlaySession` is a small state machine over `step`, in the order of slides 26 and 27: `awake` (signs of being awake) → `prepare` (the sound check and checklist) → `playing` → `done` (take the earbuds out) → `after` (the questions after the session).
+- When it opens, it loads today's sessions (`listSessionsOn()`, by `day`), picks one of the sets with stories not yet played today at random (`playableSets()` and `pickSet()`), shuffles its stories (`shuffled()`), and starts loading their audio, so it's ready by the time the checklist is done.
+- `day` is the date on the playing device's calendar (`localDay()`), so a set isn't repeated on the same day.
+- The session is saved the first time Play is tapped (`ClipPlayer`'s `onPlay`), with the checklist keys (`PREPARE`) and the signs of being awake (`AWAKE`).
+Canceling before that saves nothing. If saving fails, the set keeps playing and an error says so.
+- When the last story finishes (`ClipPlayer`'s `onEnd`), the session gets `endedAt` (`markSessionEnded()`), so a set stopped partway has none.
+Dragging the progress bar to the end counts as finishing too.
+- `after` asks about each behavior in `AFTER` (the 7 in `AWAKE`, plus 2) with the answers in `CHANGES`, then whether the patient became agitated.
+**Done** saves them on the session as `after` (`saveAfter()`), which the rules allow only once the session has `endedAt`; if marking it ended failed earlier, saving the answers tries that again first.
+If the session itself was never saved, the screen says the answers can't be saved either, and Done just leaves.
+- The sound check is a chime made in the browser (`chimeWav()` in `src/chime.js`): four rising bell notes, about 3 seconds, normalized to about a voice recording's loudness, so the volume set with it suits the stories.
+- The hearing aid question shows until a care team has answered it, then the checklist adds "hearing aid in place" for a patient who uses one.
+The eligibility survey is meant to ask it, once it's built.
+- While the app is being tested there's no gate: any set with stories can be played. Later, playing opens only once a clinician approves all 4 sets.
+- `PREPARE` and `AWAKE` are mirrored in `firestore.rules` (`isValidSession()`); change both together.
 
 ## The story editor (`src/StoryEditor.jsx`, `src/audioEdit.js`)
 
@@ -175,7 +210,7 @@ Add it to `firestore.indexes.json` and check new queries on the dev project (`np
 
 ## Testing
 
-The security rules have tests (`npm run test:rules`); there are no other automated tests or linter yet.
+The security rules have tests (`npm run test:rules`), and so do the story editor's plan, recording set progress and picking what to play (`npm run test:unit`); there is no linter yet.
 Check every change by using the app with `npm run dev:local`:
 
 - On a phone-sized window (about 390 × 844) and a computer-sized one (1280 × 900 or wider).

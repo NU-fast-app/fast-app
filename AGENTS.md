@@ -31,7 +31,7 @@ For more depth, read the doc that fits the task:
 2. Run `npm install`, then `npm run dev:local` to work against a local emulator with sample stories.
 3. Make the change in the style of the code around it.
 4. Check it in the browser at phone width and at 1280 px, in light and dark mode (see [Testing](docs/architecture.md#testing)).
-5. Run `npm run build` to be sure it builds.
+5. Run `npm run lint` and `npm run build` to be sure it's clean and builds.
 6. Update the docs the change affects: this file, `docs/`, `README.md`, and the comment at the top of `firestore.rules` if the data model changed.
 7. Stop any dev server you started.
 Deploy only when asked, following the safety rules below.
@@ -85,7 +85,8 @@ These come from the project doc ([docs/requirements.md](docs/requirements.md)) a
 - A set holds any number of stories that add up to **9:00 to 11:00**.
 - A saved story can move to any set, including one with the other affect (a happy story can become a challenging one, and the reverse), as long as both sets stay at or under 11:00.
 The client asked for this after testing (it was first built to keep the affect).
-- Randomness belongs to playback, which is not built yet: 4 sessions a day, at least 2 hours apart, each playing a random set not yet played that day, with the stories in a set in random order, for 168 sessions in all (slides 22 and 23).
+- Randomness belongs to playback: each session plays a random set not yet played that day, with the stories in a set in random order (slides 22 and 23).
+The schedule around it (4 sessions a day, at least 2 hours apart, 168 in all) isn't enforced yet.
 - Open question: the slide 10 scenario gives happy sets 9:45 to 10:15, while the user stories (slides 11 and 19) say 9:00 to 11:00.
 The app uses 9:00 to 11:00 for all 4 sets until the client says otherwise.
 
@@ -105,8 +106,9 @@ npm run dev:remote   # http://localhost:5173, against the dev Firebase project
 npm run build        # production build into dist/, for the live project
 npm run deploy:dev   # build for the dev project and deploy it to https://fast-app-cs499-dev.web.app
 npm run deploy:branch # build for the dev project and deploy it to a 7-day preview address named after the branch
-npm run test:unit    # the story editor's plan and recording set progress
+npm run test:unit    # the story editor's plan, recording set progress, choosing a set and picking what to play
 npm run test:rules   # the security rules tests (tests/rules.test.js), against the Firestore emulator
+npm run lint         # ESLint (eslint.config.js): errors fail, effect-dependency warnings don't
 ```
 
 `npm run dev:local` starts the Firestore and Auth emulators (project `demo-fast-app`, with the real `firestore.rules`), runs `scripts/seed.js`, then starts Vite in `emulator` mode.
@@ -118,10 +120,17 @@ The seed writes through the security rules, the way the app does, so a data mode
 Phones only allow the microphone over HTTPS.
 `npm run dev:mobile` prints a `Network: https://...` address for a phone on the same Wi-Fi; its certificate is self-signed, so tap through the warning the first time.
 
-The security rules have tests (`npm run test:rules`), as do the story editor's plan and recording set progress (`npm run test:unit`); there is no linter yet.
+The security rules have tests (`npm run test:rules`), as do the story editor's plan, recording set progress and picking what to play (`npm run test:unit`).
+`npm run lint` runs ESLint's recommended rules and the classic React hooks rules.
+It allows warnings (the `react-hooks/exhaustive-deps` ones are mostly deliberate), but fix any error.
+`package.json` overrides `@grpc/grpc-js`; see [Dependency notes](README.md#dependency-notes) before changing Firebase versions.
 Check changes by running the app with `npm run dev:local` and using it.
 
 ### Deploy
+
+CI (`.github/workflows/ci.yml`) deploys every push to `main` to the dev project after the checks pass, and gives each pull request a preview address; see "CI and deploys" in `README.md`.
+`main` isn't protected, so check a pull request (its checks, its preview and its changes) before merging it: merging deploys it.
+Never deploy the live project from CI.
 
 Only people added to the Firebase project can deploy.
 The Firebase CLI is a dev dependency, so `npx firebase` uses the version in `package-lock.json`.
@@ -152,25 +161,35 @@ npx firebase deploy --only firestore,hosting --project fast-app-cs499
 A new email account gets an email to confirm its address, which it needs before joining a care team.
 - **Care teams** (a "group" in the code, a "treatment" in the project doc): one patient's care team.
 Someone with no care team starts one by entering their loved one's name, and becomes its **lead caregiver** (the group's owner).
-Everyone else is a **member**, who can record, listen to, edit and move the team's stories, and leave the team.
-For now there are only these two roles; the doc's administrator, clinician, storyteller and player levels aren't built.
-- **Care team screen**: the lead caregiver, the family and friends, and (for the lead caregiver) invites not yet accepted.
-The lead caregiver invites someone by email address, gets a link to send from their own phone (Share or Copy), and can copy an invite's link again, cancel it, or remove a member.
+Everyone else is a **member** with one of the 4 access levels from slide 4 (`src/access.js`), chosen when they're invited:
+  - **Administrator**: invite and remove people and change their access, record and edit stories, and play them.
+  - **Clinician**: record and edit stories, and play them (the clinician's review and approval aren't built yet).
+  - **Record and edit stories**: record, listen to, edit and move stories.
+  - **Play stories**: play story sets
+The lead caregiver can do everything.
+Members who joined before access levels count as Record and edit stories.
+The app hides what someone's level doesn't include, and the rules enforce it.
+- **Care team screen**: the lead caregiver, the family and friends with each person's access level, and (for the lead caregiver and administrators) invites not yet accepted.
+The lead caregiver or an administrator invites someone by email address with an access level, gets a link to send from their own phone (Share or Copy), and can copy an invite's link again, cancel it, change a member's access, or remove a member.
+Nobody can change their own access or the lead caregiver's.
 - **Invite links** (`?group=<groupId>&invite=<inviteId>`) open a join screen after signing in: who invited you to whose care team, and **Join**.
 Only someone signed in with the invited email address, confirmed, can use it, and joining uses it up.
 - **Your care teams**: switch between the care teams you're on, or start another.
 The current one is in the URL as `?group=<groupId>`; without it the app opens the one used last on that device.
-- **Home**: whose care team it is, how many of the 4 sets are ready, a bar per set in its color, and what to do next (e.g. "Happy set 2 needs about 3 more minutes").
+- **Home**: whose care team it is, then playback progress (the client asked to remove the "N of 4 sets ready" card).
+Playback progress shows today's distinct completed sets, total completed sessions toward 168, and days with all four sets completed, across the care team.
 Set totals and the Listen screen include only the current care team's stories.
-On a phone, **Menu** (top right) shows your account and opens Home, Record a Story, Listen to Stories, Care team, Your care teams and Sign out.
+On a phone, **Menu** (top right) shows your account and the screens your access level allows, plus Your care teams and Sign out.
 - **Record a story**: pick a set; each shows its stories, total and time left to go, with a bar from 0:00 to 11:00 and the 9:00 to 11:00 target shaded.
 A set in range shows "Ready" and can't take more stories.
 - **Recording a story**, in 3 steps (shown under the set's name at the top).
-A guide to recording opens over the screen the first time on each device, and from the info button (top right) after that.
+A guide to recording opens over the screen the first time on each device, and from **Instructions** (top right) after that.
   1. Record the storyteller saying the patient's name 3 times.
   2. Record the story.
-The timer continues from the name clip, so it shows the whole story's length toward 5:00, and turns yellow at 4:30.
-When the set has 5:00 or less of room left, the bar marks the 9:00 minimum and 11:00 maximum and shows the time remaining to each.
+The timer continues from the name clip, so it shows the whole story's length toward 5:00.
+The limit is 5:00, or the set's room if that's less.
+One line under the bar shows the time left; 30 seconds before the limit the bar turns yellow and it adds "Start wrapping up.", and past the limit the bar turns red and it says "Finish your story now."
+When the set has 5:00 or less of room left, the bar marks the 9:00 minimum and 11:00 maximum, and the time left counts to 11:00 ("left in this set").
 Finish waits a second after starting, so a double tap can't end the recording.
   3. Listen back, enter the title, storyteller, relationship and affect, then **Add story** or **Delete recording**.
 An **Edit** button opens the story editor.
@@ -195,13 +214,25 @@ This works across affects, so a story saved as happy can be moved to a challengi
 A move or swap is only offered when both sets stay at or under 11:00.
 Only one player plays at a time, and every story's audio downloads in the background when the screen opens, so play starts right away.
 The set and individual story players have seek bars that move through the name and story recordings.
+- **Play Stories** (Home, or Play in the menu), in 4 steps, in the order of slides 26 and 27.
+For testing, any set with stories can be played; later, playing opens only once all 4 sets are approved.
+  1. **Is Sam awake?**: tick the signs of being awake.
+With none, the app suggests waiting an hour or gently waking them, and offers **Continue** or **Not now**.
+  2. **Get ready**: the first time, whether the patient uses a hearing aid (saved for the care team); a sound check that plays a short chime (`src/chime.js`); and a checklist (hearing aid in place if they use one, the patient told, earbuds in, door closed and room quiet, out of view).
+Continue stays greyed out until every item is ticked.
+  3. **Playing**: a random set not yet played today, its stories shuffled, with the time left.
+The session is saved when Play is first tapped and marked as ended if the set plays to the end, which ends with "Take the earbuds out".
+  4. **How is Sam now?**: after the earbuds come out, **More**, **Same** or **Less** for each of 9 behaviors compared to before the stories (the 7 signs of being awake, answering questions about the room and showing how to use an object), then whether the patient became agitated.
+**Yes** suggests stopping the sessions for now and checking again each week.
+Done stays greyed out until every question is answered, and the answers are saved on the session.
+Once every set with stories has played that day, Play says the next session is tomorrow.
 - The phone's back button moves between screens.
 
 ### On a computer
 
 In a window at least 960 px wide (`@media (min-width: 60rem)` in `src/styles.css`), a sidebar on the left replaces the Menu and Back buttons.
 Home also shows the 4 sets, each with its own Record button, and the sets sit in two columns, happy beside challenging.
-Recording and editing use a narrower, focused page (42rem), and the sidebar is locked until the story is finished or canceled.
+Recording, editing and playing use a narrower, focused page (42rem), and the sidebar is locked until the story or session is finished or canceled.
 
 ### Design
 
@@ -216,12 +247,14 @@ The design canvas linked above has every screen on phone and computer, the reaso
 
 [docs/roadmap.md](docs/roadmap.md) has suggested approaches for each of these.
 
-- Access levels beyond lead caregiver and member: administrator, clinician, storyteller (editing only their own stories) and player (doc slides 4 and 6), handing over the lead, renaming or deleting a care team, and invites that expire.
+- Handing over the lead, renaming or deleting a care team, and invites that expire (doc slides 4 and 6).
+- The clinician's own tools (the eligibility survey, comments and approval) for the Clinician access level.
 - The setup questions about a clinician (slide 3).
 - The eligibility survey.
 - Editing a story's title, storyteller or relationship after it's saved.
 - Clinician comments and approval, and automatically regrouping stories to fit the targets.
-- Playing story sets to the patient, the checklists, progress tracking and reminders.
+- The rest of playing: the approval gate, play instructions, the 2-hour warning and reminders.
+- Showing the answers to the questions after each session; they're saved, but where to show them is a question for the client.
 
 ## Firebase
 
@@ -251,9 +284,15 @@ The README explains how to run a fork on its own Firebase project.
 ### Data model
 
 ```
-groups/{groupId}                         id, name (the patient's), ownerId (the lead caregiver), createdAt, updatedAt
-groups/{groupId}/members/{uid}           uid, name, email, joinedAt, invite (the invite accepted, if any)
-groups/{groupId}/invites/{inviteId}      email, groupName, invitedBy, invitedByName, createdAt
+groups/{groupId}                         id, name (the patient's), ownerId (the lead caregiver), createdAt, updatedAt,
+                                         hearingAid (once answered)
+groups/{groupId}/members/{uid}           uid, name, email, joinedAt, access (the access level),
+                                         invite (the invite accepted, if any)
+groups/{groupId}/invites/{inviteId}      email, groupName, invitedBy, invitedByName, access, createdAt
+groups/{groupId}/sessions/{id}           playedBy, affect, setNumber, day ("YYYY-MM-DD"), startedAt,
+                                         prepared (checklist keys), awake (signs of being awake),
+                                         endedAt (once the set has played to the end),
+                                         after (the answers after it: changes, agitated)
 treatments/demo/stories/{id}             title, storyteller, relationship, affect, setNumber,
                                          group, nameDuration, storyDuration, type, nameSize, size,
                                          chunkCount, createdAt, and once deleted: deletedAt,
@@ -279,10 +318,14 @@ A full treatment (4 sets of about 10 minutes) is roughly 20 MB, so the free 1 Gi
 ### Security rules
 
 Every request must be signed in.
-Only a group's members can read the group, its members and its stories, and save, move or delete its stories.
-Only the owner creates, lists and cancels invites, and removes members; the owner can't leave or be removed.
+Only a group's members can read the group, its members and its stories.
+What else a member can do depends on their access level (`access` on their member document; none means "stories"): everyone but players saves, moves, deletes and restores stories, and everyone but "stories" members plays sets.
+Only the owner and administrators create, list and cancel invites, change members' access and remove members; nobody changes their own access or the owner's, and the owner can't leave or be removed.
+Someone joins with exactly the access level of their invite.
 Nobody can add themselves to a group except by starting it or accepting an invite for their own confirmed email address.
 Stories keep the earlier checks: every field with the right type and limits (including the 5:00 story limit, counting the name clip), saved and deleted only together with all of their audio, and the only edits are moving a story (`affect` and `setNumber`, to a valid affect and set 1 or 2), deleting it (adding `deletedAt` and `deletedBy`) and restoring it.
+Members who can play save a session for each set they play, once, and the player adds `endedAt` when it plays to the end, then `after` (the answers to the questions after it); nothing else about a session changes, nobody can delete one, and its checklist answers must come from fixed lists.
+Any member who can play answers the hearing aid question once (`hearingAid` on the group); it can't change after that.
 Deleting is a soft delete: a story and its audio can be removed for good only after it has been deleted for 30 days (`RECOVERY_DAYS` in `src/stories.js`, mirrored in the rules).
 The free plan can't run scheduled jobs, so the app removes expired stories whenever a member loads the stories (`removeExpiredStories()`).
 Everything else is denied.
@@ -306,12 +349,18 @@ Everything else is denied.
 - `src/audioEdit.js`: the editing engine: decoding, finding pauses, the edit plan, time-stretching (SoundTouch) and MP3 encoding (LAME).
 - `src/transcribe.js` and `src/transcribe.worker.js`: create word-timestamped English transcripts on-device with Transformers.js and Whisper.
 - `src/StoryLibrary.jsx`: the Listen screen: play, rearrange, move and delete stories.
+- `src/PlaySession.jsx`: playing a set to the patient: the checklists, then the set.
+- `src/playing.js`: the playing rules: the checklist items, the signs of being awake, and picking a random set and story order.
+- `src/sessions.js`: saves and lists the sessions played, in Firestore.
+- `src/playbackProgress.js`: calculates Home playback progress from completed sessions.
+- `src/chime.js`: makes the sound check's chime, as a WAV file.
 - `src/ClipPlayer.jsx`: plays several clips back to back as one, as a full player or a compact row.
 - `src/Transcript.jsx`: creates an on-device word-timed transcript for a story and lets a word seek its player.
 - `src/audioCache.js`: keeps loaded audio in memory so replays don't download again.
 - `src/stories.js`: the FAST rules (9:00 to 11:00 per set, 5:00 per story, relationships) and time formatting.
 - `src/auth.js`: signing in and out (Google, email and password), the `useUser()` hook, and friendly sign-in error messages.
-- `src/group.js`: care teams in Firestore: listing yours, starting one, members, invites, joining, removing and leaving.
+- `src/group.js`: care teams in Firestore: listing yours, starting one, members, invites, joining, access levels, removing and leaving.
+- `src/access.js`: the 4 access levels and what each allows.
 - `src/SignIn.jsx`: the sign-in screen (with its welcome panel on a computer).
 - `src/JoinGroup.jsx`: the screen an invite link opens.
 - `src/CareTeam.jsx`: the Care team screen and the Invite someone screen.
@@ -321,7 +370,7 @@ Everything else is denied.
 - `src/audio.js`: picks a recording format the browser supports.
 - `src/icons.jsx`: the small inline icons.
 - `src/styles.css`: the stylesheet, with light and dark colors defined once at the top and the computer layout at the end.
-- `scripts/seed.js`: fills the local emulators with demo accounts, care teams, invites and sample stories (the ones in the design canvas), with generated voice-like WAV audio.
+- `scripts/seed.js`: fills the local emulators with demo accounts, care teams, invites and sample stories (the ones in the design canvas), spoken by the Mac's built-in voices (`say`), or a voice-like hum on other computers.
 - `firestore.rules`: the security rules, which are also the data model's schema.
 - `tests/rules.test.js`: the security rules tests.
 - `docs/`: onboarding docs (requirements, architecture, design, roadmap).

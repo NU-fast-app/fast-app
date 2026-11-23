@@ -24,9 +24,8 @@ A "treatment" is one patient's whole course of therapy: its people, its 4 story 
 
 ## Setup and administration (slides 3 to 6) - Partly built
 
-Built: sign-in with Google or email and password (with password reset), starting a care team (a "group" in the code), invite links tied to an email address, the list of people and pending invites, and removing people.
-There are only two roles so far: the lead caregiver, who owns the group, and members, who can do everything else.
-Not built: the other access levels, the clinician questions, handing over the lead, and emailing invites from the app.
+Built: sign-in with Google or email and password (with password reset), starting a care team (a "group" in the code), invite links tied to an email address, the list of people and pending invites, removing people, and the 4 access levels (chosen when inviting, changed or removed later, and enforced by the database rules).
+Not built: the clinician questions, handing over the lead, changing the clinician, and emailing invites from the app.
 
 - The lead caregiver starts a treatment and enters their name, email, the patient's first and last name, and their relationship to the patient (caregiver or clinician).
 - A caregiver is asked whether a clinician will take part.
@@ -120,7 +119,13 @@ If an edit makes a set too long, go to its list of stories to pick one to edit; 
 - The clinician can review stories and give comments. **Not built.**
 - "Regroup stories by affect", where the system builds sets that fit the target automatically. **Not built.**
 
-## Playing story sets to the patient (slides 22 to 27) - Not built
+## Playing story sets to the patient (slides 22 to 27) - Partly built
+
+Built: the Play button, the pre-session checklist, picking a random set not yet played today with its stories shuffled, playing it with the time left, and saving each session (who played it, when, which set, and the checklist answers).
+While the app is being tested, any set with stories can be played; the gate on approval comes later.
+The hearing aid question is asked the first time a care team plays, until the eligibility survey asks it.
+Also built: progress on Home, and the post-session checklist, with its answers saved on each session.
+Not built: play instructions, the 2-hour warning and reminders, and showing the post-session answers anywhere.
 
 Scenario (slide 22):
 - Playing unlocks once all 4 sets are complete and approved.
@@ -152,7 +157,7 @@ If yes, prompt them to consider stopping and to re-assess weekly.
 
 Screens (slides 25 to 27):
 - Home shows "0 of 168 complete", "N days - 4 stories played" and "N of 4 today", with the play options disabled until the sets are approved.
-- The pre-session checklist has two screens: the checklist items (sound test completed, room prepared, patient told, earbuds in) with the Play button greyed out until all are checked, then the awake behaviors.
+- The pre-session checklist has two screens: first the awake behaviors (with Next), then the checklist items (sound test completed, room prepared, patient told, earbuds in) with the Play button greyed out until all are checked.
 - While playing: "Playing Happy story set 1" with a progress bar and time.
 - The post-session checklist: each behavior with More, Less or Same.
 
@@ -166,4 +171,5 @@ Slide 2 lists "Complete post treatment survey" and "Review data" (researcher) as
 The app uses 9:00 to 11:00 for all 4 sets (`SET_MIN` and `SET_MAX` in `src/stories.js`).
 - **Survey question 2 branches** look inverted (see above).
 - **Post-treatment survey** and **researcher data review** have no details yet.
+- **Where to see the post-session answers.** They're saved on each session; who should see them (caregivers, clinicians or researchers), and where?
 - **Platform.** The doc asks for iOS and Android; the prototype is a web app that works in phone browsers.

@@ -43,6 +43,7 @@ Color is never the only signal; there is always text too ("Ready", "In range", "
 
 - **Phone** (the main target): a single column up to 28rem (448 px) wide, a top bar with text buttons (Back, Cancel, Menu), and a Menu that opens Home, Record a Story and Listen and Edit Stories.
 - Home shows a compact current-group card with a group name selector.
+Playback progress shows today's distinct sets in a ring, total completed sessions in a gauge, and completed days in a circular frame without a target.
 Choosing a group updates the `group` query parameter in the URL.
 If the URL points to a group that does not exist, show the selector and a clear recovery message without showing story progress.
 - **Computer** (960 px and wider): a 256 px sidebar replaces Menu and Back.
@@ -67,23 +68,36 @@ Slide numbers refer to the project doc; [requirements.md](requirements.md) summa
 - **Exactly 4 sets** (slides 10, 11 and 21): 2 happy and 2 challenging.
 The family records the library once, a clinician approves it, and then it's locked.
 More sets would mean more recording without matching the protocol.
-- **Randomness belongs to playback** (slides 22 and 23, not built): 4 sessions a day, at least 2 hours apart, each a random set not yet played that day, with the stories in random order.
+- **Randomness belongs to playback** (slides 22 and 23): each session plays a random set not yet played that day, with the stories in random order.
+The app picks; the caregiver never chooses the set.
+The 4 sessions a day, at least 2 hours apart, aren't enforced yet.
 Recording has no randomness.
 - **Lengths**: a story is up to 5:00 counting the name said 3 times; a set holds any number of stories adding up to 9:00 to 11:00.
 The app checks both while recording, and the database rules check the 5:00 limit again.
 - **Open question**: slide 10 gives happy sets 9:45 to 10:15, while slides 11 and 19 say 9:00 to 11:00.
 The app uses 9:00 to 11:00 for all 4 sets; the tighter range would be one setting.
+- **Access levels** (slide 4): the lead caregiver picks one of 4 levels when inviting someone (Administrator, Clinician, Record and edit stories, Play stories), each with a line saying what it can do, and can change it from the person's ⋯ on Care team.
+The app hides what a level doesn't include rather than showing it disabled, so someone who only plays sees Play but not Listen or Record.
+Players can play story sets but cannot open the Listen screen.
 - **Approval comes first** (slides 11 and 17): playing opens only after a clinician approves all 4 sets, and approved sets can't be edited.
-Home already says so.
+Approval isn't built, so for testing any set with stories can be played, and Home says so under the Play button.
+- **Playing starts with a checklist** (slides 24 and 26), used at a bedside, so each item is a big row that's easy to tap.
+The order follows slide 26.
+First "Is Sam awake?": the 7 signs of being awake. With none ticked, the app suggests waiting an hour or gently waking them, but still offers "Continue".
+Then "Get ready": a sound check (a short chime the app makes itself, heard through the earbuds, at about a voice's loudness) and the checklist; Continue stays greyed out until every item is ticked.
+Then the set plays on a card in its affect's color, showing the time left, and ends with "Take the earbuds out".
+Screens use the care team's name for the patient, since that's the name the family entered.
 - **Recording in 3 steps**: say the name 3 times, tell the story, add details (title, storyteller, relationship, happy or challenging).
 The relationship list includes an Other option with a text field for relationships not listed.
 A five-card guide shows the selected set, microphone access and the recording steps, with iPhone and Android microphone permission screenshots.
 It's a dialog over the record screen, not a screen of its own, so it never stands between someone and the Start button.
-It opens by itself the first time someone records on that device; after that, the info button in the top right corner opens it at the card for the current step.
+It opens by itself the first time someone records on that device; after that, **Instructions** in the top right corner opens it at the card for the current step.
 Close, Escape or a tap outside closes it, and it can't be opened while recording.
 It keeps one size on every card, so Next and Previous stay in the same place; on a short phone the card scrolls between them.
-The timer shows the 5:00 limit and turns yellow at 4:30 (slide 14).
-When the set has 5:00 or less of room, markers show where the set reaches 9:00 and 11:00, and a set progress readout shows the time remaining to each.
+The timer shows the 5:00 limit (slide 14).
+When the set has 5:00 or less of room, markers show where the set reaches 9:00 and 11:00, and the limit is 11:00 instead.
+There's no countdown to 9:00: a short set can always take another story.
+Near either limit the feedback is the same, so it's consistent: the bar turns yellow 30 seconds before with "Start wrapping up.", then red with "Finish your story now." once past it.
 "Finish" is disabled for the first second, so a double tap on Start can't end the recording.
 - **When a story runs long** (slides 15 and 16): over 5:00, or too long for its set, the app shows the time left in the set and offers **Edit to fit** (recommended, keeps everything said) or **Record it again** (keeps the name recording).
 - **A simple editor, not a Voice Memos copy**: the doc points to the iPhone Voice Memos editor, but families only need to get under a limit.
@@ -100,7 +114,7 @@ Tap a story, then "Move here" or another story to swap with.
 
 ## Designing what's next
 
-The canvas has a "Coming later" area for accounts, admin, approval and playing.
+The canvas has a "Coming later" area for accounts, admin, approval and playing (the playing checklists are built, without designs on the canvas yet).
 New screens should:
 
 - Reuse the existing components and tokens (cards, pills, set cards, bars, chips, `NavBar`, `ClipPlayer`) before inventing new ones.

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import CareTeam, { InviteSomeone } from './CareTeam.jsx';
-import YourCareTeams, { StartCareTeam } from './CareTeams.jsx';
+import YourCareTeams, { CareTeamSetup, StartCareTeam } from './CareTeams.jsx';
+import { canListen, canManage, canPlay, canRecord } from './access.js';
 import EditStory from './EditStory.jsx';
 import Home from './Home.jsx';
 import JoinGroup from './JoinGroup.jsx';
 import NavBar from './NavBar.jsx';
+import PlaySession from './PlaySession.jsx';
 import RecordStory from './RecordStory.jsx';
 import Sidebar from './Sidebar.jsx';
 import SignIn from './SignIn.jsx';
@@ -12,19 +14,20 @@ import StoryLibrary from './StoryLibrary.jsx';
 import StorySets from './StorySets.jsx';
 import { displayName, signOut, useUser } from './auth.js';
 import { isValidGroupId, listMyGroups } from './group.js';
-import { BackIcon, HeadphonesIcon, HomeIcon, MicIcon, PeopleIcon } from './icons.jsx';
+import { BackIcon, HeadphonesIcon, HomeIcon, MicIcon, PeopleIcon, PlayOutlineIcon } from './icons.jsx';
 import { listStories, removeExpiredStories } from './storage.js';
 import { SET_MIN, formatTime, isPastRecovery, setKey, setName, summarizeSets } from './stories.js';
 import { preloadTranscriber } from './transcribe.js';
 
 // Screens: { name: 'home' }, { name: 'sets' }, { name: 'stories' }, { name: 'record', affect, setNumber },
-// { name: 'edit', storyId }, { name: 'team' } (Care team), { name: 'invite' }, { name: 'teams' }
-// (Your care teams) or { name: 'newTeam' }.
+// { name: 'edit', storyId }, { name: 'play' } (playing a set to the patient), { name: 'team' } (Care team),
+// { name: 'invite' }, { name: 'teams' } (Your care teams) or { name: 'newTeam' }.
 // Each one is a browser history entry, so the phone's back button goes to the previous screen.
 // `depth` counts this app's screens behind the current one, so Back never leaves the app.
 const HOME = { name: 'home', depth: 0 };
 const SETS_SCREEN = { name: 'sets' };
 const STORIES_SCREEN = { name: 'stories' };
+const PLAY_SCREEN = { name: 'play' };
 const TEAM_SCREEN = { name: 'team' };
 const INVITE_SCREEN = { name: 'invite' };
 const TEAMS_SCREEN = { name: 'teams' };
@@ -66,27 +69,34 @@ function lastGroup(uid) {
   }
 }
 
-// After a reload, go back to the screen that was open, but never into the middle of a recording or edit.
+// After a reload, go back to the screen that was open, but never into the middle of a recording,
+// an edit or a session.
 function firstScreen() {
   const screen = history.state?.name ? history.state : HOME;
   if (screen.name === 'record') return { ...SETS_SCREEN, depth: screen.depth };
   if (screen.name === 'edit') return { ...STORIES_SCREEN, depth: screen.depth };
+  if (screen.name === 'play') return HOME;
   return screen;
 }
 
+// `allowed(access)` hides what someone's access level doesn't let them do (see access.js).
 const MENU = [
   { label: 'Home', screen: HOME, icon: <HomeIcon /> },
-  { label: 'Record a Story', screen: SETS_SCREEN, icon: <MicIcon /> },
-  { label: 'Listen and Edit Stories', sidebarLabel: 'Listen', screen: STORIES_SCREEN, icon: <HeadphonesIcon /> },
+  { label: 'Record a Story', screen: SETS_SCREEN, icon: <MicIcon />, allowed: canRecord },
+  { label: 'Listen and Edit Stories', sidebarLabel: 'Listen', screen: STORIES_SCREEN, icon: <HeadphonesIcon />, allowed: canListen },
+  { label: 'Play Stories', sidebarLabel: 'Play', screen: PLAY_SCREEN, icon: <PlayOutlineIcon />, allowed: canPlay },
   { label: 'Care team', screen: TEAM_SCREEN, icon: <PeopleIcon /> },
 ];
+
+// The screens each access level needs, beyond the ones everyone has.
+const NEEDS = { sets: canRecord, record: canRecord, stories: canListen, edit: canRecord, play: canPlay, invite: canManage, setup: (access) => access === 'lead', setupInvite: (access) => access === 'lead' };
 
 // The menu item each screen belongs to: recording starts from the sets, editing from Listen,
 // and inviting, switching and starting care teams from Care team.
 const SECTION = { record: 'sets', edit: 'stories', invite: 'team', teams: 'team', newTeam: 'team' };
 
-// Recording and editing are focused steps: a narrower page, and no leaving it from the sidebar.
-const FOCUSED = ['record', 'edit'];
+// Recording, editing and playing are focused steps: a narrower page, and no leaving it from the sidebar.
+const FOCUSED = ['record', 'edit', 'play'];
 
 // Everything starts with signing in. Each account gets a fresh app, so nothing from one person's
 // session (screens, stories, the current group) carries over to the next.
@@ -271,10 +281,9 @@ function CareApp({ user }) {
     setNotice(name ? `You joined ${name}'s care team. Welcome!` : 'You joined the care team. Welcome!');
   }
 
-  async function started(groupId, message) {
+  async function started(groupId) {
     await refreshGroups();
     showGroup(groupId, { screen: HOME, replace: screen.name !== 'newTeam' });
-    setNotice(message);
   }
 
   async function left(message) {
@@ -301,6 +310,17 @@ function CareApp({ user }) {
   // After a save, reload the stories first, so the set totals are never out of date.
   async function finishRecording(message = '') {
     if (message) await refreshStories();
+    setNotice(message);
+    goBack();
+  }
+
+  // The hearing aid question is answered once per care team, the first time a set is played.
+  function hearingAidAnswered(groupId, hearingAid) {
+    setGroups((list) => list.map((item) => (item.id === groupId ? { ...item, hearingAid } : item)));
+  }
+
+  // Leave the play screen for the screen it was opened from, saying what was played.
+  function finishPlaying(message = '') {
     setNotice(message);
     goBack();
   }
@@ -364,6 +384,8 @@ function CareApp({ user }) {
   if (!group.groupId) return <Loading />;
 
   const summary = activeStories && summarizeSets(activeStories);
+  const access = currentGroup?.access; // 'lead' or an access level; undefined outside a care team
+  const menu = MENU.filter((item) => !item.allowed || item.allowed(access));
   const recordInSet = (affect, setNumber) => goTo({ name: 'record', affect, setNumber });
   const backButton = (
     <button className="nav-button desktop-hidden" onClick={goBack}>
@@ -398,6 +420,14 @@ function CareApp({ user }) {
   } else if (!currentGroup) {
     // A link to a group this person isn't in (or was removed from).
     content = teamsScreen(group.error || "You aren't on that care team, so here are the ones you're on.");
+  } else if (NEEDS[screen.name] && !NEEDS[screen.name](access)) {
+    // e.g. Back to a screen from before their access changed
+    content = (
+      <>
+        <NavBar left={backButton} right={menuButton} />
+        <main className="content"><p className="error" role="alert">Your access on this care team doesn&apos;t include this.</p></main>
+      </>
+    );
   } else if (screen.name === 'team') {
     content = (
       <CareTeam
@@ -412,23 +442,27 @@ function CareApp({ user }) {
       />
     );
   } else if (screen.name === 'invite') {
-    content = currentGroup.ownerId === user.uid ? (
-      <InviteSomeone user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} onDone={goBack} />
-    ) : (
-      <main className="content"><p className="error" role="alert">Only the lead caregiver can invite people.</p></main>
-    );
+    content = <InviteSomeone user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} onDone={goBack} />;
+  } else if (screen.name === 'setup') {
+    content = <CareTeamSetup key={currentGroup.id} user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} onSaved={refreshGroups} onDone={() => goTo(HOME)} />;
+  } else if (screen.name === 'setupInvite') {
+    content = <InviteSomeone key={currentGroup.id} user={user} group={currentGroup} backButton={backButton} menuButton={menuButton} clinicianSetup onSetupSaved={refreshGroups} onDone={() => goTo(HOME)} />;
   } else if (screen.name === 'home') {
     content = (
       <Home
+        key={group.groupId}
+        groupId={group.groupId}
         groupName={currentGroup.name}
         canSwitch={groups.length > 1}
         onSwitch={() => goTo(TEAMS_SCREEN)}
         notice={notice}
         summary={summary}
         menuButton={menuButton}
-        onRecord={() => goTo(SETS_SCREEN)}
-        onRecordInSet={recordInSet}
-        onListen={() => goTo(STORIES_SCREEN)}
+        onSetup={access === 'lead' && (!currentGroup.ownerRole || (currentGroup.ownerRole === 'caregiver' && !['yes', 'no'].includes(currentGroup.clinicianParticipation))) ? () => goTo({ name: 'setup' }) : null}
+        onRecord={canRecord(access) ? () => goTo(SETS_SCREEN) : null}
+        onRecordInSet={canRecord(access) ? recordInSet : null}
+        onListen={canListen(access) ? () => goTo(STORIES_SCREEN) : null}
+        onPlay={canPlay(access) ? () => goTo(PLAY_SCREEN) : null}
       />
     );
   } else if (!summary) {
@@ -447,8 +481,20 @@ function CareApp({ user }) {
         backButton={backButton}
         onChanged={storiesChanged}
         onClearNotice={() => setNotice('')}
+        canEdit={canRecord(access)}
         onRecord={recordInSet}
         onEdit={(story) => goTo({ name: 'edit', storyId: story.id })}
+      />
+    );
+  } else if (screen.name === 'play') {
+    content = (
+      <PlaySession
+        key={currentGroup.id}
+        group={currentGroup}
+        stories={activeStories}
+        onHearingAid={(answer) => hearingAidAnswered(currentGroup.id, answer)}
+        onDone={finishPlaying}
+        onCancel={() => finishPlaying()}
       />
     );
   } else if (screen.name === 'edit') {
@@ -480,9 +526,10 @@ function CareApp({ user }) {
   return (
     <div className="screen">
       <Sidebar
-        items={MENU}
+        items={menu}
         current={section}
         locked={focused}
+        lockedHint={screen.name === 'play' ? 'Finish or cancel this session to leave.' : 'Finish or cancel this story to leave.'}
         onGo={goTo}
         groupName={currentGroup?.name}
         account={account}
@@ -502,7 +549,7 @@ function CareApp({ user }) {
               <strong>{account.name}</strong>
               <span>{account.email}</span>
             </div>
-            {MENU.map((item) => (
+            {menu.map((item) => (
               <button
                 key={item.label}
                 className={item.screen.name === section ? 'current' : ''}

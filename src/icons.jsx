@@ -97,15 +97,6 @@ export function LockIcon() {
   );
 }
 
-export function InfoIcon() {
-  return (
-    <Icon>
-      <circle cx="12" cy="12" r="9" {...line} strokeWidth={2} />
-      <path d="M12 11v5.5M12 7.5v.01" {...line} />
-    </Icon>
-  );
-}
-
 export function CloseIcon() {
   return (
     <Icon>
@@ -134,6 +125,16 @@ export function HeadphonesIcon() {
   return (
     <Icon>
       <path d="M4 15v-3a8 8 0 0 1 16 0v3M4 15h3v5H4zM17 15h3v5h-3z" {...line} strokeWidth={2} />
+    </Icon>
+  );
+}
+
+// Play, drawn in lines like the menu's other icons.
+export function PlayOutlineIcon() {
+  return (
+    <Icon>
+      <circle cx="12" cy="12" r="9" {...line} strokeWidth={2} />
+      <path d="M10 8.75v6.5l5-3.25z" {...line} strokeWidth={2} />
     </Icon>
   );
 }

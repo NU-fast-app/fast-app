@@ -11,6 +11,8 @@ const WARN_BEFORE_LIMIT = STORY_MAX - STORY_WARN; // the bar turns yellow this l
 // The recorder card: status, the big timer, the live waveform, and for the story a bar toward its
 // limit. `length` is the story so far with its name clip, since the 5:00 cap counts the name.
 // `room` is how much the set can still take before this recording.
+// The limit is 5:00, or the set's room if that's less. Under the bar, one line says what's left:
+// the same "Start wrapping up." near either limit, and "Finish your story now." past it.
 export function RecorderCard({ tint, recorder, length, story, room }) {
   const { state } = recorder;
   const limit = Math.min(STORY_MAX, room);
@@ -18,10 +20,10 @@ export function RecorderCard({ tint, recorder, length, story, room }) {
   if (length > limit) level = 'long';
   else if (length >= limit - WARN_BEFORE_LIMIT) level = 'warn';
 
-  const hint = length > STORY_MAX ? `Over ${formatTime(STORY_MAX)}`
-    : `${formatTime(STORY_MAX - length)} left${level === 'warn' ? '. Start wrapping up.' : ''}`;
-  const progress = story ? recordingSetProgress(room, length) : null;
-  const remaining = (ms) => formatTime(Math.ceil(ms / 1000) * 1000);
+  const progress = story ? recordingSetProgress(room) : null;
+  const left = formatTime(Math.ceil((limit - length) / 1000) * 1000); // rounded up, so it never says 0:00 too soon
+  const hint = level === 'long' ? 'Finish your story now.'
+    : `${left} left${progress?.show ? ' in this set' : ''}${level === 'warn' ? '. Start wrapping up.' : ''}`;
   const minimumPosition = progress ? `${(progress.minimum / STORY_MAX) * 100}%` : '0%';
   const maximumPosition = progress ? `${(progress.maximum / STORY_MAX) * 100}%` : '0%';
 
@@ -53,11 +55,7 @@ export function RecorderCard({ tint, recorder, length, story, room }) {
           <div className="bar-labels">
             <span className="end-label">{formatTime(STORY_MAX)}</span>
           </div>
-          {(!progress.show || length > STORY_MAX) && <p className="timer-hint">{hint}</p>}
-          {progress.show && <div className="recording-set-progress">
-            <div className="recording-set-row"><span>Until minimum (9:00)</span><strong>{progress.toMinimum > 0 ? remaining(progress.toMinimum) : 'Reached'}</strong></div>
-            <div className="recording-set-row"><span>Until maximum (11:00)</span><strong>{progress.overMaximum ? 'Set full. Finish now.' : remaining(progress.toMaximum)}</strong></div>
-          </div>}
+          <p className={`timer-hint ${level}`}>{hint}</p>
         </div>
       )}
     </section>
