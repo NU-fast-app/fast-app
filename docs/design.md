@@ -105,7 +105,7 @@ So there are four tools: shorten long pauses (one switch), trim the start and en
 A readout always shows the length before and after, and whether it fits.
 On the main editor, a playhead moves across the waveform in proportion to the edited story's playback time.
 Tap the waveform or use the keyboard to seek, and pause or resume the preview without losing your place.
-The speech model starts downloading in the background when the app opens, and a transcript appears automatically in recording review, under each saved story in Listen, and in the editor.
+The speech model starts downloading in the background when the app opens, and a transcript appears automatically in the editor.
 Words highlight during playback and can be tapped to play from that point, including after edits.
 - **Rearrange keeps the affect** (slide 19): stories move only between sets of the same affect.
 Tap a story, then "Move here" or another story to swap with.
