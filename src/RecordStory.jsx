@@ -252,7 +252,7 @@ export default function RecordStory({ groupId, affect: startAffect, setNumber, s
             <h1 className="page-title">Add details</h1>
 
             <section className={`review-card ${tint}`}>
-              <ClipPlayer clips={clips} tint="" showTranscript />
+              <ClipPlayer clips={clips} tint="" />
               <div className="review-line">
                 <span>
                   {edited && <span className="tag soft">Edited</span>}

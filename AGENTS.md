@@ -201,8 +201,7 @@ An **Edit** button opens the story editor.
   - **Speed up or cut a part**: drag across part of the waveform, then play it at 1.1× or 1.2× (the voice keeps its natural pitch) or cut it.
   - **Add or record over a part**: tap a spot on the waveform and record a new part there, or drag across a part and record something in its place. Added parts show as red marks and can be moved afterwards: drag a mark, or a part recorded over by its box (or its edges, to change what it replaces), with **Listen** playing a few seconds either side; each can be removed (a part recorded over comes back).
   - **Play** the edited story before saving; **Undo all changes** starts over.
-  - The English transcript is created automatically while recording review, in Listen, and in the editor.
-Words highlight during playback, and tapping a word seeks and plays from that point.
+  - The English transcript is created automatically in the editor, highlights each word during playback, and lets you tap a word to seek there.
 The speech model downloads in the background when the app opens, and the transcript is not saved.
   - Saving processes the audio in the browser and stores the story as MP3.
 An edited saved story replaces the old one in one step, so it's never half saved, and the earlier version goes to Recently deleted.
@@ -355,7 +354,6 @@ Everything else is denied.
 - `src/playbackProgress.js`: calculates Home playback progress from completed sessions.
 - `src/chime.js`: makes the sound check's chime, as a WAV file.
 - `src/ClipPlayer.jsx`: plays several clips back to back as one, as a full player or a compact row.
-- `src/Transcript.jsx`: creates an on-device word-timed transcript for a story and lets a word seek its player.
 - `src/audioCache.js`: keeps loaded audio in memory so replays don't download again.
 - `src/stories.js`: the FAST rules (9:00 to 11:00 per set, 5:00 per story, relationships) and time formatting.
 - `src/auth.js`: signing in and out (Google, email and password), the `useUser()` hook, and friendly sign-in error messages.
