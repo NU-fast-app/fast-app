@@ -206,7 +206,7 @@ The speech model downloads in the background when the app opens, and the transcr
   - Saving processes the audio in the browser and stores the story as MP3.
 An edited saved story replaces the old one in one step, so it's never half saved, and the earlier version goes to Recently deleted.
 - **Listen**: every set under Happy events and Challenging events, each with a whole-set player, its target status, and its stories.
-Each story's **⋯** opens **Edit**, **Move** and **Delete** (asks first).
+Each story has an **Edit** button, and its **⋯** opens **Move** and **Delete** (asks first).
 **Recently deleted**, at the end of Listen, keeps deleted stories (and the earlier versions of edited ones) for 30 days: each can be played and **Restore**d to its set, or to the other set of its affect if that one is full.
 **Rearrange** (top right) or **Move**: tap a story, then a story in any other set to swap them, or **Move here** in the set you want.
 This works across affects, so a story saved as happy can be moved to a challenging set, and the swap exchanges their affects.
