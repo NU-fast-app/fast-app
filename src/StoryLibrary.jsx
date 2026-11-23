@@ -10,7 +10,7 @@ import {
 } from './stories.js';
 
 // "Listen": every set and its stories, grouped like the Record a Story screen.
-// Play a whole set or one story; each story's ⋯ opens Edit, Move and Delete.
+// Play a whole set or one story; Edit is shown beside each story, and ⋯ opens Move and Delete.
 // Deleted stories (`deletedStories`) are listed under "Recently deleted", where they can be played
 // and restored for RECOVERY_DAYS days.
 // Rearrange (or Move) moves stories between sets, including to the other affect (a happy story can
@@ -197,19 +197,21 @@ export default function StoryLibrary({
     return (
       <div key={story.id} className="story-item">
         <div className="story-row">
-          <ClipPlayer compact clips={clipsFor(story)} title={story.title} details={`${story.storyteller} · ${story.relationship}`} total={length} trailing={canEdit && <button
-            className="more-button"
-            onClick={() => toggleActions(story.id)}
-            aria-label={`More for ${story.title}`}
-            aria-expanded={open}
-            disabled={busy}
-          >
-            <MoreIcon />
-          </button>} />
+          <ClipPlayer compact clips={clipsFor(story)} title={story.title} details={`${story.storyteller} · ${story.relationship}`} total={length} trailing={canEdit && <>
+            <button className="story-edit-button" onClick={() => onEdit(story)} disabled={busy}>Edit</button>
+            <button
+              className="more-button"
+              onClick={() => toggleActions(story.id)}
+              aria-label={`More actions for ${story.title}`}
+              aria-expanded={open}
+              disabled={busy}
+            >
+              <MoreIcon />
+            </button>
+          </>} />
         </div>
         {open && deletingId !== story.id && (
           <div className="story-actions">
-            <button className="action edit" onClick={() => onEdit(story)}>Edit</button>
             <button className="action" onClick={() => startArranging(story)}>Move</button>
             <button className="action delete" onClick={() => setDeletingId(story.id)}>Delete</button>
           </div>
