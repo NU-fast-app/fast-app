@@ -23,7 +23,8 @@ const NO_CLIPS = [];
 // `onPlay()` is called each time playback starts from a tap, and `onEnd()` when the last clip
 // finishes. With `showLeft`, the full player shows the time left instead of the total.
 export default function ClipPlayer({
-  clips, tint = '', idleLabel, compact = false, title, details, total: knownTotal, trailing, onPlay, onEnd, showLeft = false,
+  clips, tint = '', idleLabel, compact = false, title, details, total: knownTotal, trailing, onPlay, onEnd,
+  showLeft = false, showTranscript = false,
 }) {
   const audioRef = useRef(null);
   const [index, setIndex] = useState(0); // the clip in the player
