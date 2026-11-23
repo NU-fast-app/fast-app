@@ -195,7 +195,7 @@ export default function StoryLibrary({
     return (
       <div key={story.id} className="story-item">
         <div className="story-row">
-          <ClipPlayer compact clips={clipsFor(story)} title={story.title} details={`${story.storyteller} · ${story.relationship}`} total={length} trailing={<button
+          <ClipPlayer compact clips={clipsFor(story)} title={story.title} details={`${story.storyteller} · ${story.relationship}`} total={length} showTranscript trailing={<button
             className="more-button"
             onClick={() => toggleActions(story.id)}
             aria-label={`More for ${story.title}`}

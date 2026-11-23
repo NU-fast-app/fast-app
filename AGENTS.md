@@ -182,7 +182,8 @@ An **Edit** button opens the story editor.
   - **Speed up or cut a part**: drag across part of the waveform, then play it at 1.1× or 1.2× (the voice keeps its natural pitch) or cut it.
   - **Add or record over a part**: tap a spot on the waveform and record a new part there, or drag across a part and record something in its place. Added parts show as red marks and can be moved afterwards: drag a mark, or a part recorded over by its box (or its edges, to change what it replaces), with **Listen** playing a few seconds either side; each can be removed (a part recorded over comes back).
   - **Play** the edited story before saving; **Undo all changes** starts over.
-  - The English transcript is created automatically in the editor, highlights each word during playback, and lets you tap a word to seek there.
+  - The English transcript is created automatically while recording review, in Listen, and in the editor.
+Words highlight during playback, and tapping a word seeks and plays from that point.
 The speech model downloads in the background when the app opens, and the transcript is not saved.
   - Saving processes the audio in the browser and stores the story as MP3.
 An edited saved story replaces the old one in one step, so it's never half saved, and the earlier version goes to Recently deleted.
@@ -232,6 +233,7 @@ They must be turned on in the Firebase console before the sign-in screen works o
 - **Database:** Cloud Firestore, Standard edition, location `nam5`, used through Firestore Lite (one-off reads and writes, no live listeners).
 - **Hosting:** https://fast-app-cs499.web.app (serves the `dist` build).
 - **Dev project:** `fast-app-cs499-dev` ("FAST app dev", alias `dev` in `.firebaserc`), at https://fast-app-cs499-dev.web.app, with the same rules, indexes and sign-in providers, and its own data.
+The Hosting target `app` maps to each project's matching site ID in `.firebaserc`.
 
 ### Configuration
 
@@ -305,6 +307,7 @@ Everything else is denied.
 - `src/transcribe.js` and `src/transcribe.worker.js`: create word-timestamped English transcripts on-device with Transformers.js and Whisper.
 - `src/StoryLibrary.jsx`: the Listen screen: play, rearrange, move and delete stories.
 - `src/ClipPlayer.jsx`: plays several clips back to back as one, as a full player or a compact row.
+- `src/Transcript.jsx`: creates an on-device word-timed transcript for a story and lets a word seek its player.
 - `src/audioCache.js`: keeps loaded audio in memory so replays don't download again.
 - `src/stories.js`: the FAST rules (9:00 to 11:00 per set, 5:00 per story, relationships) and time formatting.
 - `src/auth.js`: signing in and out (Google, email and password), the `useUser()` hook, and friendly sign-in error messages.

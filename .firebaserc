@@ -2,5 +2,21 @@
   "projects": {
     "default": "fast-app-cs499",
     "dev": "fast-app-cs499-dev"
+  },
+  "targets": {
+    "fast-app-cs499": {
+      "hosting": {
+        "app": [
+          "fast-app-cs499"
+        ]
+      }
+    },
+    "fast-app-cs499-dev": {
+      "hosting": {
+        "app": [
+          "fast-app-cs499-dev"
+        ]
+      }
+    }
   }
 }
