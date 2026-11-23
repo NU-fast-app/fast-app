@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PauseIcon, PlayIcon } from './icons.jsx';
 import { formatTime } from './stories.js';
+import Transcript from './Transcript.jsx';
 
 // Only one player plays at a time: starting one pauses the one that was playing.
 let current = null; // { pause } of the player that is playing
@@ -22,7 +23,8 @@ const NO_CLIPS = [];
 // `onPlay()` is called each time playback starts from a tap, and `onEnd()` when the last clip
 // finishes. With `showLeft`, the full player shows the time left instead of the total.
 export default function ClipPlayer({
-  clips, tint = '', idleLabel, compact = false, title, details, total: knownTotal, trailing, onPlay, onEnd, showLeft = false,
+  clips, tint = '', idleLabel, compact = false, title, details, total: knownTotal, trailing, onPlay, onEnd,
+  showLeft = false, showTranscript = false,
 }) {
   const audioRef = useRef(null);
   const [index, setIndex] = useState(0); // the clip in the player
@@ -117,6 +119,22 @@ export default function ClipPlayer({
     }
   }
 
+  function seekAndPlay(value) {
+    if (!clips || !total) return;
+    if (current && current !== owner.current) current.pause();
+    current = owner.current;
+    setPlaying(true);
+    seek(value);
+    const target = Math.max(0, Math.min(Number(value), total));
+    let targetIndex = 0;
+    let elapsed = 0;
+    while (targetIndex < list.length - 1 && target >= elapsed + list[targetIndex].duration) {
+      elapsed += list[targetIndex].duration;
+      targetIndex += 1;
+    }
+    if (targetIndex === index && audioRef.current.readyState >= 1) audioRef.current.play();
+  }
+
   function handleMetadata() {
     if (pendingSeek.current === null) return;
     audioRef.current.currentTime = pendingSeek.current;
@@ -156,6 +174,7 @@ export default function ClipPlayer({
   if (compact) {
     const time = `${formatTime(position)} of ${formatTime(total)}`;
     return (
+      <>
       <div className="mini-player">
         {audio}
         {button}
@@ -169,11 +188,14 @@ export default function ClipPlayer({
         {trailing}
         {progress}
       </div>
+      {showTranscript && <Transcript clips={list} position={position} onSeek={seekAndPlay} />}
+      </>
     );
   }
 
   const label = (!started && idleLabel) || list[index]?.label;
   return (
+    <>
     <div className={`player ${tint}`}>
       {audio}
       {button}
@@ -182,5 +204,7 @@ export default function ClipPlayer({
         {progress}
       </div>
     </div>
+    {showTranscript && <Transcript clips={list} position={position} onSeek={seekAndPlay} />}
+    </>
   );
 }

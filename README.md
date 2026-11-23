@@ -21,8 +21,9 @@ Players cannot open Listen, but the database allows them to read the story audio
 Only a care team's members can see or change its stories, which the database's security rules enforce.
 - Record a story in 3 steps: the patient's name said 3 times, the story (up to 5:00, counting the name), then its details.
 - Track each set toward its 9:00 to 11:00 target.
+- Read and play from an on-device transcript while reviewing a recording, listening to saved stories, or editing a story.
 - Fix a story that runs long with a simple editor: trim the ends, shorten long pauses, or speed up or cut a part.
-- Listen to whole sets or single stories, seek within them, and move or swap stories between sets, even from happy to challenging.
+- Listen to whole sets or single stories, seek within them, and move or swap stories between sets of the same kind.
 - Works on phones and on computers (with a sidebar layout at 960 px and wider), in light and dark mode.
 
 The eligibility survey and clinician approval are not built yet.
